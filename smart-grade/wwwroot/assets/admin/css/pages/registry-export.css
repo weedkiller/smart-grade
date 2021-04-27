@@ -1,0 +1,107 @@
+table {
+    border-collapse: collapse;
+}
+
+table, th, td, p, a, i, h1, h2, h3 {
+    font-family: "Calibri", sans-serif;
+    font-size: 12px;
+}
+
+table, th, td {
+    border: 1px solid black;
+}
+
+h1 {
+    text-align: center;
+    font-size: 1.05em;
+}
+
+h2 {
+    float: right;
+    font-size: 1.05em;
+}
+
+i {
+    font-style: normal;
+    font-weight: bold;
+    font-size: 1.05em;
+}
+
+.title-table {
+    margin: 0 20px 6px;
+    width: calc(100% - 40px);
+}
+
+.title-table, .title-table th, .title-table td {
+    border: none;
+    font-size: 1.05em;
+}
+
+.title-table tr th:last-child {
+    text-align: right;
+    width: 1%;
+    white-space: nowrap;
+}
+
+.title-table tr:last-child th {
+    text-align: left;
+}
+
+.main-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.main-table th {
+    background-color: #BFBFBF;
+    -webkit-print-color-adjust: exact;
+}
+
+.first-column {
+    width: 60px;
+}
+
+.class-column {
+    width: 50px;
+}
+
+.text-row {
+    height: 34px;
+    vertical-align: top;
+}
+
+th {
+    border-bottom: none !important;
+}
+
+.no-top-border {
+    border: none;
+}
+
+.kinder-table tr:not(:first-child):not(:nth-child(2)) th:first-child {
+    border: none;
+}
+
+.top-border {
+    border-top: 1px solid black !important;
+}
+
+.info-bar i {
+    margin-right: 16px;
+}
+
+.signature-row {
+    height: 30px;
+}
+
+@media print {
+    @page {
+        size: landscape;
+        margin: 6px;
+    }
+
+    .break-after {
+        page-break-after: always;
+    }
+}
+

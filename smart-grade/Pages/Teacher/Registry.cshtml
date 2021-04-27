@@ -1,0 +1,274 @@
+@page
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Database.Model
+@using FirestormSW.SmartGrade.Services
+@using Microsoft.EntityFrameworkCore
+@model FirestormSW.SmartGrade.Pages.Teacher.Registry
+@inject AppDatabase Database;
+@inject LoginService LoginService;
+
+@{
+    Layout = "Shared/Admin/AdminLayout";
+    var currentUser = LoginService.GetCurrentLoggedInUser(HttpContext);
+
+    var classes = (from g in Database.Groups
+        join h in Database.RegistryClassHistory
+            .Include(h => h.Class)
+            .Include(h => h.Teacher)
+            on g.Id equals h.Class.Id into j1
+        from h in j1.DefaultIfEmpty()
+        orderby h.Id descending
+        where g.GroupType == GroupType.Class
+        select new
+        {
+            Group = g,
+            History = h
+        }).ToList();
+
+    var currentRegSettings = currentUser.TeacherGradeLevel.RegistryConfiguration;
+}
+
+<link rel="stylesheet" href="~/assets/admin/plugins/custom/fullcalendar-v5/main.min.css"/>
+
+<style>
+    .fc-timegrid-slots tbody > tr:nth-child(even) {
+        display: none;
+    }
+    .fc-timegrid-slots tbody > tr:nth-child(odd) {
+        height: 6em;
+        cursor: pointer;
+    }
+    .fc-direction-ltr .fc-timegrid-col-events {
+        margin: 0 2px 0 2px;
+    }
+    .fc-timegrid-event {
+        cursor: pointer;
+    }
+</style>
+
+<!--begin::Entry-->
+<div class="d-flex flex-column-fluid">
+    <!--begin::Container-->
+    <div class="container">
+        <!--begin::Example-->
+        <!--begin::Card-->
+        <div class="card card-custom">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="card-icon">
+                        <span class="svg-icon svg-icon-md svg-icon-primary">
+                            <img data-svg="true" alt="" src="~/assets/admin/media/svg/icons/Design/Select.svg"/>
+                        </span>
+                    </span>
+                    <h3 class="card-label">Registry</h3>
+                </div>
+                <div class="card-toolbar">
+                    <a style="margin-right: 16px">Hours this week: <span id="hrs-this-week">0</span></a>
+                    <button type="submit" class="btn btn-primary" style="margin-right: 8px" onclick="printWeek()" id="btn-print-week" disabled>
+                        <i class="la la-print"></i>Print
+                    </button>
+                    <form asp-controller="RegistryApi" asp-action="LockWeek" id="form-lock-week">
+                        <button type="submit" class="btn btn-primary" id="btn-lock-week" disabled>
+                            <i class="la la-lock"></i>Lock week
+                        </button>
+                        <input type="hidden" name="year" class="lock-input-year"/>
+                        <input type="hidden" name="month" class="lock-input-month"/>
+                        <input type="hidden" name="weekFirstDay" class="lock-input-weekFirstDay"/>
+                    </form>
+                    <form asp-controller="RegistryApi" asp-action="UnlockWeek" id="form-unlock-week">
+                        <button type="submit" class="btn btn-primary" id="btn-unlock-week" disabled>
+                            <i class="la la-lock-open"></i>Unlock week
+                        </button>
+                        <input type="hidden" name="year" class="lock-input-year"/>
+                        <input type="hidden" name="month" class="lock-input-month"/>
+                        <input type="hidden" name="weekFirstDay" class="lock-input-weekFirstDay"/>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="kt_calendar"></div>
+            </div>
+        </div>
+        <!--end::Card-->
+        <!--end::Example-->
+    </div>
+    <!--end::Container-->
+</div>
+<!--end::Entry-->
+
+<!-- begin::Modal-->
+<div class="modal fade" id="editCellModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Edit day</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <i aria-hidden="true" class="ki ki-close"></i>
+                </button>
+            </div>
+            <!--begin::Form-->
+            <form asp-controller="RegistryApi" asp-action="CreateOrUpdateRegistryEntry" id="form_add_entry">
+                <div class="modal-body">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="select-class">Class</label>
+                            <select class="form-control" name="classId" id="select-class">
+                                @foreach (var group in classes)
+                                {
+                                    <option value="@group.Group.Id">@group.Group.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select-subject">Subject</label>
+                            <select class="form-control" name="subjectId" id="select-subject">
+                                <option value="-1">Subject</option>
+                                @foreach (var subject in currentUser.TaughtSubjects)
+                                {
+                                    <option value="@subject.Id">@subject.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-inline">
+                                <label class="checkbox checkbox-lg">
+                                    <input type="checkbox" name="isPco"/>
+                                    <span></span>
+                                    PCO
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group mb-1">
+                            <label for="input-activity">Description</label>
+                            <textarea class="form-control" id="input-activity" rows="3" name="text"></textarea>
+                        </div>
+                    </div>
+                    <input type="hidden" name="year"/>
+                    <input type="hidden" name="month"/>
+                    <input type="hidden" name="day"/>
+                    <input type="hidden" name="hour"/>
+                    <input type="hidden" name="entryId"/>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light-primary font-weight-bold" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteEntry(this)">Delete</button>
+                    <button type="submit" class="btn btn-primary font-weight-bold">Save</button>
+                </div>
+            </form>
+            <!--end::Form-->
+
+            <form asp-controller="RegistryApi" asp-action="DeleteEntry" id="form_delete_entry">
+                <input type="hidden" name="entryId">
+            </form>
+        </div>
+    </div>
+</div>
+<!-- end::Modal-->
+
+<iframe id="print-frame" src="" style="visibility: hidden"></iframe>
+
+<script src="~/assets/admin/plugins/custom/fullcalendar-v5/main.js"></script>
+<script src="~/assets/admin/js/pages/toast_notifications.js"></script>
+<script src="~/assets/admin/js/pages/formless.js"></script>
+
+<script>
+let formUpdate = $('#form_add_entry');
+let formDelete = $('#form_delete_entry');
+let userRegGroup = @currentUser.TeacherGradeLevel?.Id;
+
+function updateForm(slot, date, props) {
+    formUpdate.find('input[name="year"]').val(date.getUTCFullYear());
+    formUpdate.find('input[name="month"]').val(date.getUTCMonth() + 1);
+    formUpdate.find('input[name="day"]').val(date.getUTCDate());
+    formUpdate.find('input[name="hour"]').val(date.getUTCHours());
+    
+    formUpdate.find('textarea[name="text"]').val(props?.title).parents('.form-group').toggle(slot.HasText);
+    formUpdate.find('input[name="isPco"]').prop('checked', props?.extendedProps?.extra?.isPco ?? false).parents('.form-group').toggle(slot.HasPCO);
+    formUpdate.find('select[name="classId"]').val(props?.extendedProps?.extra?.classId ?? @classes.FirstOrDefault()?.Group?.Id).parents('.form-group').toggle(slot.HasClass);
+    formUpdate.find('select[name="subjectId"]').val(props?.extendedProps?.extra?.subjectId ?? -1).parents('.form-group').toggle(slot.HasSubject);
+    
+    formDelete.find('input[name="entryId"]').val(props?.extendedProps?.extra?.id ?? -1);
+    
+    console.log(slot);
+}
+
+function deleteEntry(e) {
+    formDelete.submit();
+}
+
+Formless(formUpdate, {
+    complete: result => {
+        $('#editCellModal').modal('hide');
+        if (result.success !== true) {
+            Swal.fire("Unable to modify this entry!", "", "error");
+        } else {
+            calendar.refetchEvents();
+            showNotification({message: 'Registry is updated'});
+        }
+        console.log("complete", result);
+    }
+});
+
+Formless(formDelete, {
+    complete: result => {
+        $('#editCellModal').modal('hide');
+        if (result.success !== true) {
+            Swal.fire("Unable to delete this entry!", "", "error");  
+        } else {
+            calendar.refetchEvents();
+            if (calendar.getEvents().length === 0) {
+                $('#btn-lock-week').show().prop('disabled', true);
+                $('#btn-unlock-week').hide().prop('disabled', true);
+            }
+            showNotification({message: 'Entry is deleted'});
+        }
+        console.log("complete", result);
+    }
+});
+
+Formless($('#form-lock-week'), {
+    prepare: () => {
+        let date = calendar.getDate();
+        $('.lock-input-year').val(date.getUTCFullYear());
+        $('.lock-input-month').val(date.getUTCMonth() + 1);
+        $('.lock-input-weekFirstDay').val(date.getUTCDate());
+    },
+    complete: result => {
+        if (result.success !== true) {
+            Swal.fire("Unable to lock this week!", "", "error");  
+        } else {
+            calendar.refetchEvents();
+            showNotification({message: 'Week is locked'});
+        }
+    }
+});
+
+Formless($('#form-unlock-week'), {
+    prepare: () => {
+        let date = calendar.getDate();
+        $('.lock-input-year').val(date.getUTCFullYear());
+        $('.lock-input-month').val(date.getUTCMonth() + 1);
+        $('.lock-input-weekFirstDay').val(date.getUTCDate());
+    },
+    complete: result => {
+        if (result.success !== true) {
+            Swal.fire("Unable to unlock this week!", "", "error");  
+        } else {
+            calendar.refetchEvents();
+            showNotification({message: 'Week is unlocked'});
+        }
+    }
+});
+
+function printWeek() {
+    let frame = window.frames['print-frame'];
+    frame.src = "/Admin/RegistryExport?userId=@currentUser.Id&weekDate=2021-03-08";
+}
+
+function printWindowLoaded() {
+    let frame = window.frames['print-frame'];
+    frame.contentWindow.print();
+}
+</script>
+
+<script src="~/assets/admin/js/pages/registry.js"></script>

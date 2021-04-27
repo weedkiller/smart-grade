@@ -1,0 +1,69 @@
+@using System.Linq
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Extensions
+@using FirestormSW.SmartGrade.Pages.Student
+@using FirestormSW.SmartGrade.Services
+@using Microsoft.AspNetCore.Html
+@inject AppDatabase Database;
+@inject LoginService LoginService;
+@{
+    var currentUser = LoginService.GetCurrentLoggedInUser(Context);
+    var gradesCount = Database.Grades
+        .Where(g => g.Student.Id == currentUser.Id)
+        .Count(g => !g.Seen);
+    var absencesCount = Database.Absences
+        .Where(g => g.Student.Id == currentUser.Id)
+        .Count(g => !g.Seen);
+    var disciplinaryCount = Database.Disciplinary
+        .Where(g => g.Student.Id == currentUser.Id)
+        .Count(g => !g.Seen);
+
+    Func<dynamic, IHtmlContent> RenderMenuItem(Type pageType, string pageName, int badge = 0)
+    {
+        bool activePage = pageType == Model?.GetType();
+        return @<li class="menu-item @(activePage ? "menu-item-active" : "")" aria-haspopup="true">
+                   <a href="@Url.Page(pageType)" class="menu-link">
+                       <span class="menu-text">
+                           @pageName
+                           @if (badge > 0)
+                           {
+                               <span class="label label-sm @(activePage ? "label-white" : "label-info") ml-2">@badge</span>
+                           }
+                       </span>
+                   </a>
+               </li>;
+    }
+}
+
+<!--begin::Header-->
+<div id="kt_header" class="header header-fixed">
+    <!--begin::Header Wrapper-->
+    <div class="header-wrapper rounded-top-xl d-flex flex-grow-1 align-items-center">
+        <!--begin::Container-->
+        <div class="container-fluid d-flex align-items-center justify-content-end justify-content-lg-between flex-wrap">
+            <!--begin::Menu Wrapper-->
+            <div class="header-menu-wrapper header-menu-wrapper-left py-lg-2" id="kt_header_menu_wrapper">
+                <!--begin::Menu-->
+                <div id="kt_header_menu" class="header-menu header-menu-mobile header-menu-layout-default">
+                    <!--begin::Nav-->
+                    <ul class="menu-nav">
+                        @RenderMenuItem(typeof(Grades), "Grades", gradesCount)(null)
+                        @RenderMenuItem(typeof(Absences), "Absences", absencesCount)(null)
+                        @RenderMenuItem(typeof(Disciplinary), "Disciplinary", disciplinaryCount)(null)
+                        @RenderMenuItem(typeof(Info), "Info")(null)
+                    </ul>
+                    <!--end::Nav-->
+                </div>
+                <!--end::Menu-->
+            </div>
+            <!--end::Menu Wrapper-->
+        </div>
+        <!--end::Container-->
+    </div>
+    <!--end::Header Wrapper-->
+</div>
+<!--end::Header-->
+
+@{
+    Database.SaveChanges();
+}

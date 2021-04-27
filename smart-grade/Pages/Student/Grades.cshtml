@@ -1,0 +1,111 @@
+@page
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Database.Model
+@using FirestormSW.SmartGrade.Services
+@using FirestormSW.SmartGrade.Utils
+@using Microsoft.EntityFrameworkCore
+@model FirestormSW.SmartGrade.Pages.Student.Grades
+@inject AppDatabase Database;
+@inject LoginService LoginService;
+
+@{
+    Layout = "Shared/Student/StudentLayout";
+
+    var currentUser = LoginService.GetCurrentLoggedInUser(HttpContext);
+    var subjects = Database.Groups
+        .Include(g => g.Subjects)
+        .AsEnumerable()
+        .Single(g => g.Id == currentUser.Groups.Single(g1 => g1.GroupType == GroupType.Class).Id).Subjects;
+
+    var allGrades = Database.Grades
+        .Include(g => g.Student)
+        .Include(g => g.Subject)
+        .Where(g => g.Student.Id == currentUser.Id)
+        .OrderByDescending(g => g.Date)
+        .ToList();
+
+    ViewData["unseen_grade_count"] = allGrades.Count(g => !g.Seen);
+}
+
+<!--begin::Entry-->
+<div class="d-flex flex-column-fluid">
+    <!--begin::Container-->
+    <div class="container-fluid">
+        <!--begin::Row-->
+        <div class="row">
+            @foreach (var subject in subjects)
+            {
+                int unseenCount = allGrades.Where(g => g.Subject.Id == subject.Id).Count(g => !g.Seen);
+                <!--begin::Col-->
+                <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-6">
+                    <!--begin::Card-->
+                    <div class="card card-custom gutter-t card-stretch">
+                        <div class="card-header ribbon ribbon-top ribbon-ver">
+                            @if (unseenCount > 0)
+                            {
+                                <div class="ribbon-target bg-primary" style="top: -2px; right: 20px;">
+                                    @unseenCount
+                                </div>
+                            }
+                            <h3 class="card-title">
+                                @subject.Name
+                            </h3>
+                        </div>
+                        <!--begin::Body-->
+                        <div class="pl-8 pr-8 pt-4">
+                            @for (int s = 1; s <= 2; s++)
+                            {
+                                var semester = s;
+                                var grades = allGrades
+                                    .Where(g => g.Subject.Id == subject.Id && g.Semester == semester)
+                                    .ToList();
+                                if (!grades.Any() && semester > 1)
+                                {
+                                    continue;
+                                }
+                                @if (semester > 1)
+                                {
+                                    <div class="separator separator-solid separator-border-3"></div>
+                                }
+                                <p class="h5 mb-4 mt-4 text-dark-65">Semester @s</p>
+                                <div class="mb-2">
+                                    @foreach (var grade in grades)
+                                    {
+                                        <p class="text-dark-50">
+                                            <span class="label label-lg font-weight-bolder pulse pulse-info">
+                                                <span class="position-relative">@grade.Value</span>
+                                                @if (!grade.Seen)
+                                                {
+                                                    <span class="pulse-ring"></span>
+                                                }
+                                            </span>
+                                            <span class="ml-4">@grade.Date</span>
+                                        </p>
+                                        grade.Seen = true;
+                                    }
+                                    @if (!grades.Any())
+                                    {
+                                        <p class="text-dark-50">
+                                            <span class="ml-4">No grades yet</span>
+                                        </p>
+                                    }
+                                    else
+                                    {
+                                        float average = AverageCalculator.GetAverageForSubject(subject, semester, grades);
+                                        <p class="font-size-lg text-success">Average: @Math.Round(average, 2)</p>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <!--end::Body-->
+                    </div>
+                    <!--end::Card-->
+                </div>
+                <!--end::Col-->
+            }
+        </div>
+        <!--end::Row-->
+    </div>
+    <!--end::Container-->
+</div>
+<!--end::Entry-->

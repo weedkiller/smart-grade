@@ -1,0 +1,248 @@
+@page
+@using System.Reflection
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Properties
+@using FirestormSW.SmartGrade.Services
+@using FirestormSW.SmartGrade.Utils
+@model FirestormSW.SmartGrade.Pages.Admin.Management.GeneralConfig
+
+@inject LanguageService LanguageService;
+@inject LoginService LoginService;
+@inject EmailService EmailService;
+@inject DatabaseProperties Properties;
+
+@{
+    Layout = "Shared/Admin/AdminLayout";
+
+    var generalSettings = Properties.GetProperty<GeneralSettings>() ?? new GeneralSettings
+    {
+        DefaultCulture = "en-us",
+        RegistryCulture = "en-us"
+    };
+    var emailSettings = Properties.GetOrCreateProperty<EmailSettings>();
+}
+<style>
+    td {
+        width: auto;
+    }
+    td:first-child {
+        width: 1%;
+        padding-right: 50px;
+        white-space: nowrap;
+    }
+</style>
+
+<div class="d-flex flex-column-fluid">
+    <!--begin::Container-->
+    <div class="container">
+        <!--begin::Row-->
+        <div class="row">
+            <div class="col-xl-6">
+                <!--begin::Card-->
+                <div class="card card-custom gutter-b">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <h3 class="card-label">System Status</h3>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-borderless">
+                            <table class="table">
+                                <tbody>
+                                <tr>
+                                    <td class="col-form-label">Software Version</td>
+                                    <td>@Assembly.GetExecutingAssembly().GetName().Version</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-form-label">System Time</td>
+                                    <td>@($"{DateTime.Now:F}")</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-form-label">Current Server User</td>
+                                    <td>@Environment.UserName</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-form-label">Used Memory</td>
+                                    <td>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-danger" role="progressbar" style="width: @Model.MemoryPercentage%" aria-valuenow="@Model.MemoryPercentage" aria-valuemin="0" aria-valuemax="@Model.MemoryPercentage"></div>
+                                        </div>
+                                        <span class="form-text text-muted">@FormatHelper.FormatSize(Model.MemoryUsed) / @FormatHelper.FormatSize(Model.MemoryAvailable) (@($"{Model.MemoryPercentage:F0}%"))</span>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!--end::Card-->
+                <!--begin::Card-->
+                <div class="card card-custom gutter-b">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <h3 class="card-label">Email Settings (SMTP)</h3>
+                        </div>
+                    </div>
+                    <form asp-controller="ManagementApi" asp-action="SaveEmailSettings" class="form-customization">
+                        <div class="card-body">
+                            <div class="alert alert-success email-status email-status-2" role="alert" style="display: @(EmailService.Status == ConnectionStatus.Connected ? "block" : "none")">
+                                Connected to the SMTP server.
+                            </div>
+                            <div class="alert alert-danger email-status email-status-1" role="alert" style="display: @(EmailService.Status == ConnectionStatus.ConnectionError ? "block" : "none")">
+                                Unable to connect to the SMTP server.
+                            </div>
+                            <div class="alert alert-warning email-status email-status-0" role="alert" style="display: @(EmailService.Status == ConnectionStatus.NotConfigured ? "block" : "none")">
+                                The server is not configured.
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-lg-3 col-form-label">Server Host</label>
+                                <div class="col-lg-6">
+                                    <input type="text" class="form-control" name="serverHost" value="@emailSettings.SmtpHost"/>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-lg-3 col-form-label">Port</label>
+                                <div class="col-lg-6">
+                                    <input type="number" min="0" max="65535" class="form-control" name="serverPort" value="@emailSettings.SmtpPort"/>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-lg-3 col-form-label">Username</label>
+                                <div class="col-lg-6">
+                                    <input type="text" class="form-control" name="serverUser" value="@emailSettings.SmtpUser"/>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-lg-3 col-form-label">Password</label>
+                                <div class="col-lg-6">
+                                    <input type="password" class="form-control" name="serverPass" value="@emailSettings.SmtpPassword"/>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-lg-3 col-form-label">Sender Address</label>
+                                <div class="col-lg-6">
+                                    <input type="text" class="form-control" name="senderAddress" value="@emailSettings.SenderAddress"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary spinner-white spinner-left">
+                                Save
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <!--end::Card-->
+            </div>
+            <div class="col-xl-6">
+                <!--begin::Card-->
+                <div class="card card-custom gutter-b">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <h3 class="card-label">Customization</h3>
+                        </div>
+                    </div>
+                    <form asp-controller="ManagementApi" asp-action="SaveGeneralSettings" class="form-customization">
+                        <div class="card-body">
+                            <div class="form-group row">
+                                <label class="col-lg-3 col-form-label">Default Language</label>
+                                <div class="col-lg-6">
+                                    <select class="form-control" name="defaultLanguage">
+                                        @foreach (var culture in LanguageService.GetAvailableCultures())
+                                        {
+                                            if (generalSettings.DefaultCulture == culture.Name)
+                                            {
+                                                <option value="@culture.Name" selected>@culture.NativeName</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@culture.Name">@culture.NativeName</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-lg-3 col-form-label">Registry Language</label>
+                                <div class="col-lg-6">
+                                    <select class="form-control" name="registryLanguage">
+                                        @foreach (var culture in LanguageService.GetAvailableCultures())
+                                        {
+                                            if (generalSettings.RegistryCulture == culture.Name)
+                                            {
+                                                <option value="@culture.Name" selected>@culture.NativeName</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@culture.Name">@culture.NativeName</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-lg-3 col-form-label">Principal Name</label>
+                                <div class="col-lg-6">
+                                    <input type="text" class="form-control" name="principalName" value="@generalSettings.PrincipalName"/>
+                                    <span class="form-text text-muted">This name will be displayed on the Registry sheet</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary mr-2">Save</button>
+                        </div>
+                    </form>
+                </div>
+                <!--end::Card-->
+            </div>
+        </div>
+        <!--end::Row-->
+    </div>
+    <!--end::Container-->
+</div>
+
+<script src="~/assets/admin/js/pages/toast_notifications.js"></script>
+<script src="~/assets/admin/js/pages/formless.js"></script>
+<script src="~/assets/admin/js/plugins/mark/jquery.mark.min.js"></script>
+<script>
+Formless($('.form-customization'), {
+    prepare: (form) => {
+        form.find('button[type=submit]').addClass('spinner');
+    },
+    complete: (result, form) => {
+        form.find('button[type=submit]').removeClass('spinner');
+        if (result.success !== true) {
+            Swal.fire("Unable to save this setting!", "", "error");
+        } else {
+            showNotification({message: 'The setting is saved'});
+            if(result.result.Source === "Email") {
+                $('.email-status').hide();
+                $('.email-status-' + result.result.Status).show();
+            }
+        }
+    }
+});
+
+$('#search_box').on('keyup', e => {
+    let query = $(e.target).val();
+    let allCards = $('.card'); 
+    allCards.each((index, card) => {
+        card = $(card);
+        let title = card.find('.card-title');
+        let labels = card.find('.col-form-label');
+        card.toggle(title.text().toLowerCase().includes(query) || 
+                    labels.text().toLowerCase().includes(query));
+        
+        title.unmark();
+        labels.unmark();
+        
+        title.mark(query);
+        labels.mark(query);
+    });
+    $('.col-xl-6').each((index, column) => {
+        column = $(column); 
+        let show = (column.find('.card').map((i, e) => $(e).css('display') !== 'none').toArray().some(e => e));
+        column.toggle(show);
+    });
+});
+</script>

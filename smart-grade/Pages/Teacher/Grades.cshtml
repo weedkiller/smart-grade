@@ -1,0 +1,355 @@
+@page
+@using FirestormSW.SmartGrade.Api.Teacher
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Extensions
+@using FirestormSW.SmartGrade.Services
+@using FirestormSW.SmartGrade.Utils
+@using Microsoft.AspNetCore.Http
+@model FirestormSW.SmartGrade.Pages.Teacher.Grades
+@inject AppDatabase Database;
+@inject LoginService LoginService;
+
+@{
+    Layout = "Shared/Admin/AdminLayout";
+
+    int subjectId = HttpContext.Session.GetInt32("subject_id") ?? -1;
+    var currentSubject = Database.Subjects.GetById(subjectId);
+    var currentUser = LoginService.GetCurrentLoggedInUser(HttpContext);
+    var classes = TeacherUtils.GetOrderedClasses(Database, currentUser);
+}
+
+<script src="~/assets/admin/js/pages/crud/forms/widgets/bootstrap-datetimepicker.js"></script>
+
+<!--begin::Entry-->
+<div class="d-flex flex-column-fluid">
+    <!--begin::Container-->
+    <div class="container">
+        <!--begin::Card-->
+        <div class="card card-custom" id="main-card">
+            <div class="card-header py-3">
+                <div class="card-title">
+                    <span class="card-icon">
+                        <span class="svg-icon svg-icon-md svg-icon-primary">
+                            <img data-svg="true" alt="" src="~/assets/admin/media/svg/icons/Home/Book-open.svg"/>
+                        </span>
+                    </span>
+                    <h3 class="card-label">Grades</h3>
+                    <ul class="breadcrumb breadcrumb-transparent breadcrumb-dot font-weight-bold p-0 my-10 font-size-sm">
+                        <li class="breadcrumb-item text-muted">
+                            <a class="text-muted">@currentSubject?.Name</a>
+                        </li>
+
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <!--begin::Search Form-->
+                <div class="mt-2 mb-7">
+                    <div class="row align-items-center">
+                        <div class="col-lg-9 col-xl-8">
+                            <div class="row align-items-center">
+                                <div class="col-md-4 my-2 my-md-0">
+                                    <div class="input-icon">
+                                        <input type="text" class="form-control" placeholder="Search..." id="kt_datatable_search_query"/>
+                                        <span>
+                                            <i class="flaticon2-search-1 text-muted"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 my-2 my-md-0">
+                                    <div class="d-flex align-items-center">
+                                        <label class="mr-3 mb-0 d-none d-md-block">Class:</label>
+                                        <select class="form-control" id="kt_class">
+                                            @foreach (var group in classes)
+                                            {
+                                                <option value="@group.Id">@group.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--begin: Datatable-->
+                <div class="accordion accordion-toggle-arrow" id="studentList">
+
+                </div>
+                <!--end: Datatable-->
+            </div>
+            <div class="overlay-layer bg-dark-o-10">
+                <div class="spinner spinner-primary"></div>
+            </div>
+        </div>
+        <!--end::Card-->
+    </div>
+    <!--end::Container-->
+</div>
+<!--end::Entry-->
+
+<div id="data-content" style="display: none">
+    <div>
+        <div class="row">
+            <div class="col-lg-6 col-xxl-3">
+                <!--begin::Mixed Widget 1-->
+                <div class="card card-custom card-stretch gutter-b">
+                    <form class="form" asp-controller="GradesApi" asp-action="CreateGrade" id="kt_form_1">
+                        <!--begin::Body-->
+                        <div class="card-body pt-4" style="padding: 0.3rem">
+                            <div class="form-group">
+                                <label for="input-grade">Grade</label>
+                                <input class="form-control" type="number" name="value" value="10" min="1" max="10" id="input-grade"/>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-date">Date</label>
+                                <div class="input-group date" id="kt_datetimepicker_2" data-target-input="nearest">
+                                    <input type="text" class="form-control datetimepicker-input" placeholder="Select date & time" data-target="#kt_datetimepicker_2"
+                                           id="input-date" name="date"/>
+                                    <div class="input-group-append" data-target="#kt_datetimepicker_2" data-toggle="datetimepicker">
+                                        <span class="input-group-text">
+                                            <i class="ki ki-calendar"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                                <script>
+                                    $('#kt_datetimepicker_2').datetimepicker({
+                                        locale: 'en',
+                                        defaultDate: new Date()
+                                    });
+                                </script>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-semester">Midterm</label>
+                                <span class="switch">
+                                    <label>
+                                        <input type="checkbox" name="isMidterm"/>
+                                        <span></span>
+                                    </label>
+                                </span>
+                            </div>
+                            <button type="submit" class="btn btn-primary mr-2">Submit</button>
+                        </div>
+                        <!--end: Card Body-->
+                        <input type="hidden" name="studentId"/>
+                        <input type="hidden" name="subjectId" value="@subjectId"/>
+                        <input type="hidden" name="semester" value="1"/>
+                    </form>
+                </div>
+                <!--end::Mixed Widget 1-->
+            </div>
+            <div class="col-lg-6 col-xxl-9">
+                <!--begin::List Widget 9-->
+                <div class="card card-custom card-stretch gutter-b" style="overflow: auto !important;">
+                    <div class="example-preview">
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li class="nav-item" onclick="$('#kt_form_1 input[name=semester]').val(1)">
+                                <a class="nav-link active" data-toggle="tab" href="#home1">
+                                    <span class="nav-text">1st semester</span>
+                                </a>
+                            </li>
+                            <li class="nav-item" onclick="$('#kt_form_1 input[name=semester]').val(2)">
+                                <a class="nav-link" data-toggle="tab" href="#profile1" aria-controls="profile">
+                                    <span class="nav-text">2ns semester</span>
+                                </a>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-5">
+                            <div class="tab-pane fade show active" id="home1" role="tabpanel">
+                                <table class="table">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Grade</th>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">Midterm</th>
+                                        <th scope="col">Action</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody class="table-s1">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="tab-pane fade" id="profile1" role="tabpanel">
+                                <table class="table">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Grade</th>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">Midterm</th>
+                                        <th scope="col">Action</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody class="table-s2">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overlay-layer bg-dark-o-10">
+                        <div class="spinner spinner-primary"></div>
+                    </div>
+                </div>
+                <!--end: List Widget 9-->
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="data-content-form_master" style="display: none">
+    <div>
+        <!--begin::List Widget 9-->
+        <div class="card card-custom card-stretch gutter-b" style="overflow: auto !important;">
+            <div class="example-preview">
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item" onclick="$('#kt_form_1 input[name=semester]').val(1)">
+                        <a class="nav-link active" data-toggle="tab" href="#home">
+                            <span class="nav-text">1st semester</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" onclick="$('#kt_form_1 input[name=semester]').val(2)">
+                        <a class="nav-link" data-toggle="tab" href="#profile" aria-controls="profile">
+                            <span class="nav-text">2ns semester</span>
+                        </a>
+                    </li>
+                </ul>
+                <div class="tab-content mt-5">
+                    <div class="tab-pane fade show active" id="home" role="tabpanel">
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th scope="col">Subject</th>
+                                <th scope="col">Grade</th>
+                                <th scope="col">Date</th>
+                                <th scope="col">Midterm</th>
+                            </tr>
+                            </thead>
+                            <tbody class="table-s1">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tab-pane fade" id="profile" role="tabpanel">
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th scope="col">Subject</th>
+                                <th scope="col">Grade</th>
+                                <th scope="col">Date</th>
+                                <th scope="col">Midterm</th>
+                            </tr>
+                            </thead>
+                            <tbody class="table-s2">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="overlay-layer bg-dark-o-10">
+                <div class="spinner spinner-primary"></div>
+            </div>
+        </div>
+        <!--end: List Widget 9-->
+    </div>
+</div>
+
+<script id="item-entry-template" type="text/html">
+    <tr>
+        <th>{{:Value}}</th>
+        <td>{{:Date}}</td>
+        <td>
+            <span class="label label-inline label-light-{{:is_midterm_class}} font-weight-bold">
+                {{:is_midterm_text}}
+            </span>
+        </td>
+        <td>
+            <form method="delete" asp-controller="GradesApi" asp-action="DeleteGrade">
+                <a href="javascript:;" onclick="deleteGrade(this)" class="" title="Delete">
+                    <i class="far fa-trash-alt"></i>
+                </a>
+                <input type="hidden" name="gradeId" value="{{:Id}}"/>
+            </form>
+        </td>
+    </tr>
+</script>
+
+<script id="item-entry-template-form_master" type="text/html">
+    <tr>
+        <td>{{:SubjectName}}</td>
+        <th>{{:Value}}</th>
+        <td>{{:Date}}</td>
+        <td>
+            <span class="label label-inline label-light-{{:is_midterm_class}} font-weight-bold">
+                {{:is_midterm_text}}
+            </span>
+        </td>
+    </tr>
+</script>
+
+<script id="data-template" type="text/html">
+    <!--begin::Entry-->
+    <div class="card user-root" data-name="{{:name}}">
+        <div class="card-header" id="headingTwo{{:id}}">
+            <div class="card-title collapsed" data-toggle="collapse" data-target="#collapseTwo{{:id}}">
+                <div class="card-label">{{:name}}<span class="summary-bar text-info ml-4">{{:summary}}</span></div>
+            </div>
+        </div>
+        <div id="collapseTwo{{:id}}" class="card-body-root collapse" data-parent="#studentList">
+            <div class="card-body">
+            </div>
+        </div>
+    </div>
+    <!--end::Entry-->
+</script>
+
+<script>
+let API_LIST_PATH = "/api/teacher/grades/user_grades";
+let classSelector = $('#kt_class');
+let studentList = $('#studentList');
+let mainCard = $('#main-card');
+let dataContent = $('#data-content'); // FM
+let itemTemplate = $.templates('#data-template');
+let itemEntryTemplate = $.templates('#item-entry-template'); // FM
+let itemName = "Grade";
+let subjectId = @subjectId;
+let currentUserId = @currentUser.Id;
+let summaryProviderType = "@nameof(GradesApiController)";
+
+if (subjectId === -2) {
+    dataContent = $('#data-content-form_master');
+    itemEntryTemplate = $.templates('#item-entry-template-form_master');
+}
+
+function handleEntry(e) {
+    e.is_midterm_text = e.IsMidterm ? "yes" : "no";
+    e.is_midterm_class = e.IsMidterm ? "success" : "danger";
+}
+
+FormValidation.formValidation(
+    document.getElementById('kt_form_1'), {
+        fields: {
+            date: {
+                validators: {
+                    notEmpty: {
+                        message: 'Date is required'
+                    }
+                }
+            }
+        },
+
+        plugins: {
+            trigger: new FormValidation.plugins.Trigger(),
+            // Bootstrap Framework Integration
+            bootstrap: new FormValidation.plugins.Bootstrap(),
+            // Validate fields when clicking the Submit button
+            submitButton: new FormValidation.plugins.SubmitButton()
+        }
+    }
+);
+
+function resetForm() {
+    $('input[name="value"]').val(10);
+    $('#input-date').datetimepicker("date", new Date());
+    $('input[name="isMidterm"]').prop('checked', false);
+}
+</script>
+
+<script src="~/assets/admin/js/pages/toast_notifications.js"></script>
+<script src="~/assets/admin/js/pages/teacher_common.js"></script>

@@ -1,0 +1,108 @@
+@using System.Security.Claims
+@using FirestormSW.SmartGrade.Database.Model
+@using FirestormSW.SmartGrade.Services
+@using FirestormSW.SmartGrade.Utils
+@inject LoginService LoginService;
+
+@{
+    var CurrentUser = LoginService.GetCurrentLoggedInUser(Context);
+
+    var identity = (ClaimsIdentity) Context.User.Identity;
+    bool isImpersonated = identity.HasClaim(UserClaims.Impersonated, "true");
+}
+
+<!--begin::Header-->
+<div class="d-flex align-items-center justify-content-between flex-wrap p-8 bgi-size-cover bgi-no-repeat rounded-top" style="background-image: url('/assets/admin/media/misc/bg-1.jpg')">
+    <div class="d-flex align-items-center mr-2">
+
+        <!--begin::Symbol-->
+        <div class="symbol bg-white-o-15 mr-3">
+            <span class="symbol-label text-success font-weight-bold font-size-h4">@CurrentUser.FullName?[0]</span>
+        </div>
+
+        <!--end::Symbol-->
+
+        <!--begin::Text-->
+        <div class="text-light m-0 flex-grow-1 mr-3 font-size-h5">@CurrentUser.FullName</div>
+
+        <!--end::Text-->
+    </div>
+</div>
+
+<!--end::Header-->
+
+<!--begin::Nav-->
+<div class="navi navi-spacer-x-0 pt-5">
+
+    @if (CurrentUser.Groups.Any(g => g.GroupType == GroupType.Admin))
+    {
+        <!--begin::Item-->
+        <a href="?role=@GroupType.Admin" class="navi-item px-8">
+            <div class="navi-link">
+                <div class="navi-icon mr-2">
+                    <i class="fas fa-user-tie text-warning"></i>
+                </div>
+                <div class="navi-text">
+                    <div class="font-weight-bold">Administrator</div>
+                    <div class="text-muted">Manage system settings</div>
+                </div>
+            </div>
+        </a>
+
+        <!--end::Item-->
+    }
+
+    @if (CurrentUser.Groups.Any(g => g.GroupType == GroupType.Teacher))
+    {
+        <!--begin::Item-->
+        <a href="?role=@GroupType.Teacher" class="navi-item px-8">
+            <div class="navi-link">
+                <div class="navi-icon mr-2">
+                    <i class="fas fa-briefcase text-warning"></i>
+                </div>
+                <div class="navi-text">
+                    <div class="font-weight-bold">Teacher</div>
+                    <div class="text-muted">Edit student info</div>
+                </div>
+            </div>
+        </a>
+
+        <!--end::Item-->
+    }
+
+    @if (CurrentUser.Groups.Any(g => g.GroupType == GroupType.Class))
+    {
+        <!--begin::Item-->
+        <a href="?role=@GroupType.Class" class="navi-item px-8">
+            <div class="navi-link">
+                <div class="navi-icon mr-2">
+                    <i class="fas fa-graduation-cap text-warning"></i>
+                </div>
+                <div class="navi-text">
+                    <div class="font-weight-bold">Student</div>
+                    <div class="text-muted">Access the student interface</div>
+                </div>
+            </div>
+        </a>
+
+        <!--end::Item-->
+    }
+
+
+    <!--begin::Footer-->
+    <div class="navi-separator mt-3"></div>
+    <div class="navi-footer px-8 py-5" style="justify-content: flex-end">
+        @if (isImpersonated)
+        {
+            <a href="@Url.Page("/Logout", new {StopImpersonating = 1})" class="btn btn-light-primary font-weight-bold">Stop Impersonating</a>
+        }
+        else
+        {
+            <a href="@Url.Page("/Logout")" class="btn btn-light-primary font-weight-bold">Sign Out</a>
+        }
+    </div>
+
+    <!--end::Footer-->
+</div>
+
+<!--end::Nav-->

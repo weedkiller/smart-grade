@@ -1,0 +1,286 @@
+@page
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Database.Model
+@using FirestormSW.SmartGrade.Extensions
+@using FirestormSW.SmartGrade.Services
+@using FirestormSW.SmartGrade.Utils
+@using Microsoft.EntityFrameworkCore
+@using Newtonsoft.Json.Linq
+@model FirestormSW.SmartGrade.Pages.Student.Info
+@inject AppDatabase Database;
+@inject LoginService LoginService;
+
+@{
+    Layout = "Shared/Student/StudentLayout";
+
+    var currentUser = LoginService.GetCurrentLoggedInUser(HttpContext);
+
+    var lastFiveMonths = Enumerable.Range(0, 10)
+        .Select(i => DateTime.Today.AddMonths(-i))
+        .OrderBy(d => d)
+        .ToArray();
+    var userGrades = Database.Grades
+        .Include(g => g.Student)
+        .Include(g => g.Subject)
+        .Where(g => g.Student.Id == currentUser.Id);
+
+    var groupedGrades = lastFiveMonths
+        .Select(m => new
+        {
+            Month = $"{m:MMM. yyyy}",
+            Average = Math.Round(AverageCalculator.GetAverageForAllSubjects(userGrades.Where(g => g.Date <= m.EndOfMonth())), 2)
+        })
+        .ToArray();
+    var averages = Enumerable.Range(1, 2)
+        .Select(s => Math.Round(AverageCalculator.GetAverageForAllSubjects(userGrades.Where(g => g.Semester == s)), 2))
+        .ToArray();
+
+    var userAbsences = Database.Absences
+        .Include(g => g.Student)
+        .Include(g => g.Subject)
+        .Where(g => g.Student.Id == currentUser.Id);
+    var groupedAbsences = lastFiveMonths
+        .Select(m => new
+        {
+            Month = $"{m:MMM. yyyy}",
+            Count = userAbsences.Count(a => a.Date <= m.EndOfMonth())
+        });
+    var absences = Enumerable.Range(1, 2)
+        .Select(s => userAbsences.Count(a => a.Semester == s))
+        .ToArray();
+
+    var userDisciplinary = Database.Disciplinary
+        .Include(g => g.Student)
+        .Include(g => g.Subject)
+        .Where(g => g.Student.Id == currentUser.Id);
+    var groupedDisciplinary = lastFiveMonths
+        .Select(m => new
+        {
+            Month = $"{m:MMM. yyyy}",
+            Points = userDisciplinary.Where(a => a.Date <= m.EndOfMonth()).Sum(d => d.Points)
+        });
+    var disciplinary = Enumerable.Range(1, 2)
+        .Select(s => userDisciplinary.Count(a => a.Semester == s))
+        .ToArray();
+}
+
+<!--begin::Entry-->
+<div class="d-flex flex-column-fluid">
+    <!--begin::Container-->
+    <div class="container-fluid">
+        <!--begin::Profile 4-->
+        <div class="d-flex flex-row">
+            <!--begin::Content-->
+            <div class="flex-row-fluid">
+                <!--begin::Row-->
+                <div class="row gutter-t">
+                    <div class="col-lg-3">
+                        <div class="card card-custom gutter-b card-stretch">
+                            <div class="card-body">
+                                <!--begin::Details-->
+                                <div class="d-flex mb-9">
+                                    <!--begin::Info-->
+                                    <div class="flex-grow-1">
+                                        <!--begin::Title-->
+                                        <div class="d-flex justify-content-between flex-wrap mt-1">
+                                            <div class="d-flex mr-3">
+                                                <a href="#" class="text-dark-75 text-hover-primary font-size-h5 font-weight-bold mr-3">@currentUser.FullName</a>
+                                            </div>
+                                        </div>
+                                        <!--end::Title-->
+                                        <!--begin::Content-->
+                                        <div class="d-flex flex-wrap justify-content-between mt-1">
+                                            <div class="d-flex flex-column flex-grow-1 pr-8">
+                                                <div class="pt-8 pb-6">
+                                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                                        <span class="font-weight-bold mr-2">Email / Login:</span>
+                                                        <a href="#" class="text-muted text-hover-primary">@currentUser.LoginName</a>
+                                                    </div>
+                                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                                        <span class="font-weight-bold mr-2">Class:</span>
+                                                        <span class="text-muted">@currentUser.Groups.Single(g => g.GroupType == GroupType.Class).Name</span>
+                                                    </div>
+                                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                                        <span class="font-weight-bold mr-2">Form Master:</span>
+                                                        <span class="text-muted">@currentUser.Groups.Single(g => g.GroupType == GroupType.Class).FormMaster?.FullName</span>
+                                                    </div>
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <span class="font-weight-bold mr-2">Notification Email:</span>
+                                                        <a href="#" class="text-muted text-hover-primary">@currentUser.NotificationEmail</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!--end::Content-->
+                                    </div>
+                                    <!--end::Info-->
+                                </div>
+                                <!--end::Details-->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3">
+                        <!--begin::Mixed Widget 5-->
+                        <div class="card card-custom bg-radial-gradient-primary card-stretch gutter-b">
+                            <!--begin::Header-->
+                            <div class="card-header border-0 py-5">
+                                <div>
+                                    <h3 class="card-title font-weight-bolder text-white">Average</h3>
+                                    <h6 class="text-white">1st Semester: @averages[0]</h6>
+                                    <h6 class="text-white">2nd Semester: @averages[1]</h6>
+                                </div>
+                            </div>
+                            <!--end::Header-->
+                            <!--begin::Body-->
+                            <div class="card-body d-flex flex-column p-0">
+                                <!--begin::Chart-->
+                                <div id="kt_grades_chart" style="height: 140px"></div>
+                                <!--end::Chart-->
+                            </div>
+                            <!--end::Body-->
+                        </div>
+                        <!--end::Mixed Widget 5-->
+                    </div>
+                    <div class="col-lg-3">
+                        <!--begin::Mixed Widget 5-->
+                        <div class="card card-custom bg-radial-gradient-warning card-stretch gutter-b">
+                            <!--begin::Header-->
+                            <div class="card-header border-0 py-5">
+                                <div>
+                                    <h3 class="card-title font-weight-bolder text-white">Absences</h3>
+                                    <h6 class="text-white">1st Semester: @absences[0]</h6>
+                                    <h6 class="text-white">2nd Semester: @absences[1]</h6>
+                                </div>
+                            </div>
+                            <!--end::Header-->
+                            <!--begin::Body-->
+                            <div class="card-body d-flex flex-column p-0">
+                                <!--begin::Chart-->
+                                <div id="kt_absences_chart" style="height: 140px"></div>
+                                <!--end::Chart-->
+                            </div>
+                            <!--end::Body-->
+                        </div>
+                        <!--end::Mixed Widget 5-->
+                    </div>
+                    <div class="col-lg-3">
+                        <!--begin::Mixed Widget 5-->
+                        <div class="card card-custom bg-radial-gradient-danger card-stretch gutter-b">
+                            <!--begin::Header-->
+                            <div class="card-header border-0 py-5">
+                                <div>
+                                    <h3 class="card-title font-weight-bolder text-white">Disciplinary</h3>
+                                    <h6 class="text-white">1st Semester: @disciplinary[0]</h6>
+                                    <h6 class="text-white">2nd Semester: @disciplinary[1]</h6>
+                                </div>
+                            </div>
+                            <!--end::Header-->
+                            <!--begin::Body-->
+                            <div class="card-body d-flex flex-column p-0">
+                                <!--begin::Chart-->
+                                <div id="kt_disc_chart" style="height: 140px"></div>
+                                <!--end::Chart-->
+                            </div>
+                            <!--end::Body-->
+                        </div>
+                        <!--end::Mixed Widget 5-->
+                    </div>
+                </div>
+                <!--end::Row-->
+            </div>
+            <!--end::Content-->
+        </div>
+        <!--end::Profile 4-->
+    </div>
+    <!--end::Container-->
+</div>
+<!--end::Entry-->
+
+<script>
+let monthNames = @Html.Raw(JArray.FromObject(groupedGrades.Select(o => o.Month)));
+let gradesData = @Html.Raw(JArray.FromObject(groupedGrades.Select(o => o.Average)));
+let absencesData = @Html.Raw(JArray.FromObject(groupedAbsences.Select(o => o.Count)));
+let disciplinaryData = @Html.Raw(JArray.FromObject(groupedDisciplinary.Select(o => -o.Points)));
+setupChart("kt_grades_chart", "Average", gradesData, monthNames, 10);
+setupChart("kt_absences_chart", "Absences", absencesData, monthNames, Math.max(...absencesData) + 4);
+setupChart("kt_disc_chart", "Points", disciplinaryData, monthNames, Math.max(...disciplinaryData) + 4);
+
+function setupChart(chart_id, name, data, categories, max) {
+    const element = document.getElementById(chart_id);
+    const height = parseInt(KTUtil.css(element, 'height'));
+    
+    const options = {
+        series: [{
+            name: name,
+            data: data
+        }],
+        chart: {
+            type: 'line',
+            height: height,
+            toolbar: {
+                show: false
+            },
+            sparkline: {
+                enabled: true
+            },
+        },
+        plotOptions: {
+            bar: {
+                horizontal: false,
+                columnWidth: ['30%'],
+                endingShape: 'rounded'
+            },
+        },
+        legend: { show: false },
+        dataLabels: { enabled: false },
+        stroke: {
+            show: true,
+            curve: "smooth"
+        },
+        xaxis: {
+            categories: categories,
+            axisBorder: {
+                show: false,
+            },
+            axisTicks: {
+                show: false
+            },
+            labels: {
+                style: {
+                    colors: KTAppSettings['colors']['gray']['gray-500'],
+                    fontSize: '12px',
+                    fontFamily: KTAppSettings['font-family']
+                }
+            }
+        },
+        yaxis: {
+            min: 0,
+            max: max,
+            labels: {
+                style: {
+                    colors: KTAppSettings['colors']['gray']['gray-500'],
+                    fontSize: '12px',
+                    fontFamily: KTAppSettings['font-family']
+                }
+            }
+        },
+        fill: {
+            type: ['solid', 'solid'],
+            opacity: [0.25, 1]
+        },
+        tooltip: {
+            style: {
+                fontSize: '12px',
+                fontFamily: KTAppSettings['font-family']
+            },
+            marker: {
+                show: false
+            }
+        },
+        colors: ['#ffffff', '#ffffff']
+    };
+
+    let chart = new ApexCharts(element, options);
+    chart.render();
+}
+</script>

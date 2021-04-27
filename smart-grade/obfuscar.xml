@@ -1,0 +1,12 @@
+<?xml version='1.0'?>
+<Obfuscator>
+    <AssemblySearchPath path="/home/sparky/.nuget/packages/microsoft.aspnetcore.app.ref/5.0.0/ref/net5.0/" />
+    <AssemblySearchPath path="/home/sparky/.nuget/packages/livesharp/1.6.52/lib/netstandard2.0/" />
+    
+    <Var name="InPath" value="./bin/Debug/net5.0" />
+    <Var name="OutPath" value="./bin/Debug/net5.0/Obfuscator_Output" />
+    <Var name="HidePrivateApi" value="true" />
+    
+    <Module file="$(InPath)/FirestormSW.SmartGrade.dll" />
+    <Module file="$(InPath)/FirestormSW.SmartGrade.Views.dll" />
+</Obfuscator>

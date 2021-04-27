@@ -1,0 +1,71 @@
+@using System.Globalization
+@using System.Resources
+@using FirestormSW.SmartGrade.Resources.Localization
+@using FirestormSW.SmartGrade.Services
+@inject LoginService loginService;
+@{
+    var currentUser = loginService.GetCurrentLoggedInUser(Context);
+    var currentCulture = new CultureInfo(currentUser?.PreferredLanguage ?? "en-US");
+    var resourceManager = new ResourceManager(typeof(Localization));
+    var resourceSet = resourceManager.GetResourceSet(currentCulture, true, false);
+    var flagIcon = resourceSet.GetString("meta.flag_icon");
+}
+
+<!--begin::Aside-->
+<div class="aside aside-left d-flex flex-column" id="kt_aside">
+
+    <!--begin::Brand-->
+    <div class="aside-brand d-flex flex-column align-items-center flex-column-auto pt-5 pt-lg-18 pb-10">
+
+        <!--begin::Logo-->
+        <div class="btn p-0 symbol symbol-60 symbol-light-primary">
+            <div class="symbol-label">
+                <img alt="Logo" src="~/assets/admin/media/svg/avatars/001-boy.svg" class="h-75 align-self-end"/>
+            </div>
+        </div>
+
+        <!--end::Logo-->
+    </div>
+
+    <!--end::Brand-->
+
+    <!--begin::Nav Wrapper-->
+    <div class="aside-nav d-flex flex-column align-items-center flex-column-fluid pb-10">
+
+        <!--begin::Nav-->
+        <ul class="nav flex-column">
+            
+        </ul>
+
+        <!--end::Nav-->
+    </div>
+
+    <!--end::Nav Wrapper-->
+
+    <!--begin::Footer-->
+    <div class="aside-footer d-flex flex-column align-items-center flex-column-auto py-8">
+
+        <!--begin::SignOut-->
+        <a href="@Url.Page("/Logout")" class="btn btn-icon btn-hover-text-primary btn-lg mb-1" id="kt_quick_panel_toggle" data-toggle="tooltip" data-placement="right" data-container="body" data-boundary="window" title="" data-original-title="Sign Out">
+            <span class="svg-icon svg-icon-xxl">
+                <img data-svg="true" alt="" src="~/assets/admin/media/svg/icons/Navigation/Sign-out.svg"/>
+            </span>
+        </a>
+        <!--end::SignOut-->
+
+        <!--begin::Languages-->
+        <div class="dropdown" data-toggle="tooltip" data-placement="right" data-container="body" data-boundary="window" title="Languages">
+            <a href="#" class="btn btn-icon btn-hover-text-primary btn-lg" data-toggle="dropdown" data-offset="0px,0px">
+                <img class="w-20px h-20px rounded" src="~/assets/admin/media/svg/flags/@flagIcon" alt="image"/>
+            </a>
+            <!--begin::Dropdown-->
+            <div class="dropdown-menu p-0 m-0 dropdown-menu-anim-up dropdown-menu-sm dropdown-menu-left">
+                <partial name="Shared/Admin/Partials/Extras/Dropdown/Languages"/>
+            </div>
+            <!--end::Dropdown-->
+        </div>
+        <!--end::Languages-->
+    </div>
+    <!--end::Footer-->
+</div>
+<!--end::Aside-->

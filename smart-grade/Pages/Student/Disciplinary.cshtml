@@ -1,0 +1,68 @@
+@page
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Services
+@using Microsoft.EntityFrameworkCore
+@model FirestormSW.SmartGrade.Pages.Student.Disciplinary
+@inject AppDatabase Database;
+@inject LoginService LoginService;
+
+@{
+    Layout = "Shared/Student/StudentLayout";
+    
+    var currentUser = LoginService.GetCurrentLoggedInUser(HttpContext);
+    var allDisciplinary = Database.Disciplinary
+        .Include(g => g.Student)
+        .Include(g => g.Subject)
+        .Where(g => g.Student.Id == currentUser.Id)
+        .OrderByDescending(g => g.Date)
+        .ThenByDescending(g => g.Subject.Id)
+        .ToList();
+
+    ViewData["unseen_disc_count"] = allDisciplinary.Count(g => !g.Seen);
+}
+
+<div class="d-flex flex-column-fluid">
+    <!--begin::Container-->
+    <div class="container-fluid">
+        <!--begin::Card-->
+        <div class="card card-custom gutter-b">
+            <div class="card-body">
+                <table class="table">
+                    <caption>Total points: @allDisciplinary.Sum(d => d.Points)</caption>
+                    <thead>
+                    <tr>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Points</th>
+                        <th scope="col">Comment</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var disciplinary in allDisciplinary)
+                    {
+                        <tr>
+                            <td>
+                                @disciplinary.Subject.Name
+                                @if (!disciplinary.Seen)
+                                {
+                                    <span class="label label-xl label-dot label-info mr-2"></span>
+                                }
+                            </td>
+                            <td>@disciplinary.Date</td>
+                            <td>
+                                <span class="label label-inline label-light-danger font-weight-bold">
+                                    @disciplinary.Points
+                                </span>
+                            </td>
+                            <td>@disciplinary.Comment</td>
+                        </tr>
+                        disciplinary.Seen = true;
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!--end::Card-->
+    </div>
+    <!--end::Container-->
+</div>

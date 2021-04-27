@@ -1,0 +1,308 @@
+@page
+@using System.Linq
+@using FirestormSW.SmartGrade.Api.Admin
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Database.Model
+@using FirestormSW.SmartGrade.Export.Renderers
+@using Microsoft.EntityFrameworkCore
+@model FirestormSW.SmartGrade.Pages.Admin.Teachers
+@inject AppDatabase Database;
+
+@{
+    Layout = "Shared/Admin/AdminLayout";
+}
+
+<script src="~/assets/admin/js/pages/crud/forms/widgets/select2.js"></script>
+
+<!--begin::Entry-->
+<div class="d-flex flex-column-fluid">
+    <!--begin::Container-->
+    <div class="container">
+        <!--begin::Card-->
+        <div class="card card-custom">
+            <div class="card-header py-3">
+                <div class="card-title">
+                    <span class="card-icon">
+                        <span class="svg-icon svg-icon-md svg-icon-primary">
+                            <img data-svg="true" alt="" src="~/assets/admin/media/svg/icons/Clothes/Briefcase.svg"/>
+                        </span>
+                    </span>
+                    <h3 class="card-label">Teachers</h3>
+                </div>
+                <div class="card-toolbar">
+                    <!--begin::Dropdown-->
+                    <div class="dropdown dropdown-inline mr-2">
+                        <button type="button" class="btn btn-light-primary font-weight-bolder dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="la la-download"></i>Export
+                        </button>
+                        <!--begin::Dropdown Menu-->
+                        <div class="dropdown-menu dropdown-menu-sm dropdown-menu-right">
+                            <ul class="navi flex-column navi-hover">
+                                <li class="navi-header font-weight-bolder text-uppercase text-primary pb-2">Choose an option:</li>
+                                <li class="navi-item">
+                                    <a href="javascript:;" class="navi-link"
+                                       onclick="exportData('@Url.Action("ExportData", "ExportDataApi")', '@typeof(TeachersApiController).FullName', '@nameof(ExcelRenderer)')">
+                                        <i class="navi-icon la la-file-excel-o"></i>
+                                        <span class="navi-text">Excel</span>
+                                    </a>
+                                </li>
+                                <li class="navi-item">
+                                    <a href="#" class="navi-link"
+                                       onclick="exportData('@Url.Action("ExportData", "ExportDataApi")', '@typeof(TeachersApiController).FullName', '@nameof(CsvRenderer)')">
+                                        <i class="navi-icon la la-file-text-o"></i>
+                                        <span class="navi-text">CSV</span>
+                                    </a>
+                                </li>
+                                <li class="navi-item">
+                                    <a href="#" class="navi-link"
+                                       onclick="exportData('@Url.Action("ExportData", "ExportDataApi")', '@typeof(TeachersApiController).FullName', '@nameof(PdfRenderer)')">
+                                        <i class="navi-icon la la-file-pdf-o"></i>
+                                        <span class="navi-text">PDF</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <!--end::Dropdown Menu-->
+                    </div>
+                    <!--end::Dropdown-->
+                    <!--begin::Button-->
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newRecordModal" onclick="resetModal()">
+                        <i class="la la-plus"></i>New Record
+                    </button>
+                    <!--end::Button-->
+
+                    <!-- Modal-->
+                    <div class="modal fade" id="newRecordModal" tabindex="-1" role="dialog" aria-labelledby="newRecordModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="newRecordModalLabel">Create Teacher</h5>
+                                    <h5 class="modal-title" id="editRecordModalLabel" style="display: none;">Edit Teacher User</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <i aria-hidden="true" class="ki ki-close"></i>
+                                    </button>
+                                </div>
+                                <form class="form" asp-controller="TeachersApi" asp-action="CreateEntry" id="kt_form_1">
+                                    <div class="modal-body">
+                                        <div class="card-body">
+                                            <div class="form-group">
+                                                <label>Full Name <span class="text-danger">*</span></label>
+                                                <input type="text" name="fullName" class="form-control" placeholder="Enter full name"/>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Login Name <span class="text-danger">*</span></label>
+                                                <input type="text" name="loginName" class="form-control" placeholder="Enter login name or email"/>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Grade Type</label>
+                                                <div>
+                                                    <select class="form-control" name="grade_type" style="width: 100%;">
+                                                        @foreach (var gradeLevel in Database.GradeLevels)
+                                                        {
+                                                            <option value="@gradeLevel.Id">@gradeLevel.Name</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Classes</label>
+                                                <div>
+                                                    <select class="form-control select2" id="classes_select" name="classes" multiple="multiple" style="width: 100%">
+                                                        @foreach (var group in Database.Groups
+                                                            .Include(g => g.GradeLevel)
+                                                            .Where(g => g.GroupType == GroupType.Class)
+                                                            .AsEnumerable()
+                                                            .GroupBy(g => g.GradeLevel))
+                                                        {
+                                                            <optgroup label="@group.Key.Name">
+                                                                @foreach (var g in group)
+                                                                {
+                                                                    <option value="@g.Id">@g.Name</option>
+                                                                }
+                                                            </optgroup>
+                                                        }
+                                                    </select>
+                                                    <script>
+                                                        $('#classes_select').select2({
+                                                            placeholder: "Select the classes",
+                                                        });       
+                                                    </script>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="exampleInputPassword1">Password <span class="text-danger">*</span></label>
+                                                <input type="password" class="form-control" name="password" id="exampleInputPassword1" placeholder="Password"/>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Is Administrator</label>
+                                                <div class="col-3">
+                                                    <span class="switch switch-sm">
+                                                        <label>
+                                                            <input type="checkbox" name="is_admin"/>
+                                                            <span></span>
+                                                        </label>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <input type="hidden" name="existingId" value="-1"/>
+                                        </div>
+
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-light-primary font-weight-bold" data-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary font-weight-bold" id="btn_save_create_item">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <!--end::Modal-->
+                </div>
+            </div>
+            <div class="card-body">
+                <!--begin::Search Form-->
+                <div class="mt-2 mb-7">
+                    <div class="row align-items-center">
+                        <div class="col-lg-9 col-xl-8">
+                            <div class="row align-items-center">
+                                <div class="col-md-4 my-2 my-md-0">
+                                    <div class="input-icon">
+                                        <input type="text" class="form-control" placeholder="Search..." id="kt_datatable_search_query"/>
+                                        <span>
+                                            <i class="flaticon2-search-1 text-muted"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--end::Search Form-->
+                <!--end: Search Form-->
+                <!--begin: Datatable-->
+                <div class="datatable datatable-bordered datatable-head-custom" id="kt_datatable"></div>
+                <!--end: Datatable-->
+            </div>
+        </div>
+        <!--end::Card-->
+    </div>
+    <!--end::Container-->
+</div>
+<!--end::Entry-->
+
+<script>
+    let API_PATH = "/api/admin/teachers/";
+    
+    let formValidationFields = {
+        fullName: {
+            validators: {
+                notEmpty: {
+                    message: 'Full name is required'
+                }
+            }
+        },
+        loginName: {
+            validators: {
+                notEmpty: {
+                    message: 'Login name is required'
+                }
+            }
+        }
+    };
+    
+    let datatableDataColumns = [
+        {
+            field: 'FullName',
+            title: 'Full Name'
+        }, {
+            field: 'LoginName',
+            title: 'Login Name'
+        }, {
+            field: 'TeacherGradeLevel',
+            title: 'Grade Type',
+            template: function (row) {
+                return '<span class="label font-weight-bold label-lg ' + 'label-light-primary' + ' label-inline">' + row.GradeType?.Name + '</span>&nbsp;';
+            }
+        }, {
+            field: 'LastLogin',
+            title: 'Last Login',
+            type: 'date',
+            format: 'YYYY-MM-DD',
+        }, {
+            field: 'Actions',
+            title: 'Actions',
+            sortable: false,
+            width: 125,
+            overflow: 'visible',
+            autoHide: false,
+            template: function (row) {
+                let showImpersonateBtn = row.Id != userId && !isImpersonated;
+                return `\
+                    <a href="javascript:;" onclick="setupEditModal(\'` + encodeURIComponent(JSON.stringify(row)) + `\')" class="btn btn-sm btn-clean btn-icon mr-2" title="Edit details">\
+                        <span class="svg-icon svg-icon-md">\
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">\
+                                <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">\
+                                    <rect x="0" y="0" width="24" height="24"/>\
+                                    <path d="M8,17.9148182 L8,5.96685884 C8,5.56391781 8.16211443,5.17792052 8.44982609,4.89581508 L10.965708,2.42895648 C11.5426798,1.86322723 12.4640974,1.85620921 13.0496196,2.41308426 L15.5337377,4.77566479 C15.8314604,5.0588212 16,5.45170806 16,5.86258077 L16,17.9148182 C16,18.7432453 15.3284271,19.4148182 14.5,19.4148182 L9.5,19.4148182 C8.67157288,19.4148182 8,18.7432453 8,17.9148182 Z" fill="#000000" fill-rule="nonzero"\ transform="translate(12.000000, 10.707409) rotate(-135.000000) translate(-12.000000, -10.707409) "/>\
+                                    <rect fill="#000000" opacity="0.3" x="5" y="20" width="15" height="2" rx="1"/>\
+                                </g>\
+                            </svg>\
+                        </span>\
+                    </a>\
+                    `+ (showImpersonateBtn ? `<a href="/Login?Impersonate=${row.Id}" class="btn btn-sm btn-clean btn-icon" title="Impersonate">\
+                        <span class="svg-icon svg-icon-md">\
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">\
+                                <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">\
+                                    <polygon points="0 0 24 0 24 24 0 24"/>\
+                                    <path d="M12,11 C9.790861,11 8,9.209139 8,7 C8,4.790861 9.790861,3 12,3 C14.209139,3 16,4.790861 16,7 C16,9.209139 14.209139,11 12,11 Z" fill="#000000" fill-rule="nonzero" opacity="0.3"/>\
+                                    <path d="M3.00065168,20.1992055 C3.38825852,15.4265159 7.26191235,13 11.9833413,13 C16.7712164,13 20.7048837,15.2931929 20.9979143,20.2 C21.0095879,20.3954741 20.9979143,21 20.2466999,21 C16.541124,21 11.0347247,21 3.72750223,21 C3.47671215,21 2.97953825,20.45918 3.00065168,20.1992055 Z" fill="#000000" fill-rule="nonzero"/>\
+                                </g>\
+                            </svg>\
+                        </span>\
+                    </a>` : "")+`
+                    <a href="javascript:;" onclick="showDeleteModal(\'` + encodeURIComponent(JSON.stringify(row)) + `\')" class="btn btn-sm btn-clean btn-icon" title="Delete">\
+                        <span class="svg-icon svg-icon-md">\
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">\
+                                <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">\
+                                    <rect x="0" y="0" width="24" height="24"/>\
+                                    <path d="M6,8 L6,20.5 C6,21.3284271 6.67157288,22 7.5,22 L16.5,22 C17.3284271,22 18,21.3284271 18,20.5 L18,8 L6,8 Z" fill="#000000" fill-rule="nonzero"/>\
+                                    <path d="M14,4.5 L14,4 C14,3.44771525 13.5522847,3 13,3 L11,3 C10.4477153,3 10,3.44771525 10,4 L10,4.5 L5.5,4.5 C5.22385763,4.5 5,4.72385763 5,5 L5,5.5 C5,5.77614237 5.22385763,6 5.5,6 L18.5,6 C18.7761424,6 19,5.77614237 19,5.5 L19,5 C19,4.72385763 18.7761424,4.5 18.5,4.5 L14,4.5 Z" fill="#000000" opacity="0.3"/>\
+                                </g>\
+                            </svg>\
+                        </span>\
+                    </a>\
+                `;
+            },
+        }
+    ];
+    
+    function setupEditModal(row) {
+        row = JSON.parse(decodeURIComponent(row));
+        console.log(row)
+        
+        $('#editRecordModalLabel').show();
+        $('#newRecordModalLabel').hide();
+        $('#newRecordModal').modal('show');
+        $('#newRecordModal input[name="fullName"]').val(row.FullName);
+        $('#newRecordModal input[name="loginName"]').val(row.LoginName);
+        $('#newRecordModal input[name="password"]').val(row.HasPassword ? "**********" : "");
+        $('#newRecordModal input[name="is_admin"]').prop('checked', row.IsAdmin);
+        $('#newRecordModal select[name="grade_type"]').val(row.GradeType.Id).trigger('change');
+        $('#newRecordModal select[name="classes"]').val(row.Classes.map(x => x.Id)).trigger('change');
+        $('#newRecordModal input[name="existingId"]').val(row.Id);
+    }
+    
+    function resetModal() {
+        $('#editRecordModalLabel').hide();
+        $('#newRecordModalLabel').show();
+        $('#newRecordModal input[name="fullName"]').val('');
+        $('#newRecordModal input[name="loginName"]').val('');
+        $('#newRecordModal input[name="password"]').val('');
+        $('#newRecordModal input[name="is_admin"]').prop('checked', false);
+        $('#newRecordModal select[name="grade_type"]').val(-1).trigger('change');
+        $('#newRecordModal select[name="classes"]').val(-1).trigger('change');
+        $('#newRecordModal input[name="existingId"]').val(-1);
+    }
+</script>
+
+<script src="~/assets/admin/js/pages/crud_common.js"></script>

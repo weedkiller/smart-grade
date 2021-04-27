@@ -1,0 +1,25 @@
+Old Control Panel
+    *System Status
+    *Updates
+    *ServerInfo
+    *License
+    *EmailNotifications
+    *Customization (school name, principal name, reg. language)
+    *Backups
+    *Database export/import
+    *Data delete
+
+Control Panel
+    General
+        - System Status / Version / Updates
+        - License
+        - Customization
+        - Email notifications
+        - Platform integration
+    Registry Settings
+    Database
+        - SQLite / MySQL
+        - Migrate data form internal to external
+        - Import / Export
+        - Scheduled Backups
+        - Clear / Reset database

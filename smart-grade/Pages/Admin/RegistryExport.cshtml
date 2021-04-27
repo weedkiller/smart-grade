@@ -1,0 +1,137 @@
+@page
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Properties
+@using Microsoft.AspNetCore.Html
+@model FirestormSW.SmartGrade.Pages.Admin.RegistryExport
+@inject DatabaseProperties Properties;
+
+@{
+    Layout = null;
+    var settings = Properties.GetProperty<GeneralSettings>();
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>export</title>
+    <link rel="stylesheet" href="~/assets/admin/css/pages/registry-export.css">
+
+    <script>
+        window.onload = function () {
+            parent.printWindowLoaded();
+        };
+    </script>
+</head>
+<body>
+<table class="title-table">
+    <tr>
+        <th>Weekly Registry – @Model.Teacher.TeacherGradeLevel.Name</th>
+        <th>Verified</th>
+    </tr>
+    <tr>
+        <th> </th>
+        <th>@settings?.PrincipalName</th>
+    </tr>
+    <tr>
+        <th colspan="2" class="info-bar">
+            <i>Name: @Model.Teacher.FullName</i>
+            <i>Week: @(Model.WeekStart.ToString("d")) - @((Model.WeekStart + TimeSpan.FromDays(4)).ToString("d"))</i>
+            <i>Total: @Model.RegEntries.Count() hours</i>
+            <!-- <i>class/group: ...</i> -->
+        </th>
+    </tr>
+</table>
+@{
+    Func<dynamic, IHtmlContent> RenderTable(DayOfWeek start, DayOfWeek end)
+    {
+        return @<table class="main-table">
+                   @{
+                       bool classColNeeded = Model.RegConfig.Slots.Any(s => s.HasClass);
+                       bool subjRowNeeded = Model.RegConfig.Slots.Any(s => s.HasSubject);
+                   }
+                   <tr>
+                       <th rowspan="2" class="first-column">Hour</th>
+                       @for (int i = (int) start; i <= (int) end; i++)
+                       {
+                           if (classColNeeded)
+                           {
+                               <th class="class-column"></th>
+                           }
+                           <th>@((DayOfWeek) i)</th>
+                       }
+
+                   </tr>
+                   <tr>
+                       @for (int i = (int) start; i <= (int) end; i++)
+                       {
+                           if (classColNeeded)
+                           {
+                               <th class="class-column">Class</th>
+                           }
+                           <th>Subject</th>
+                       }
+
+                   </tr>
+                   @for (int h = Model.RegConfig.StartTime.Hours;
+                       h < Model.RegConfig.StartTime.Hours + Model.RegConfig.Slots.Sum(s => s.Duration); h++)
+                   {
+                       int _h = h;
+                       var slot = Model.RegConfig.Slots.FirstOrDefault(s => Model.StartTimes[s] == _h);
+                       var timeText = $"{h}:00";
+                       if (slot?.CustomLabel != null)
+                       {
+                           timeText = slot.CustomLabel;
+                       }
+                       if (slot == null)
+                       {
+                           timeText = null;
+                       }
+                       <tr>
+                           <th class="@(slot == null ? "no-top-border" : "")" @(subjRowNeeded ? "rowspan=2" : "")>@timeText</th>
+                           @for (int d = (int) start; d <= (int) end; d++)
+                           {
+                               var _d = d;
+                               var entry = Model.RegEntries.SingleOrDefault(e => e.Date.Hour == _h && e.Date.DayOfWeek == (DayOfWeek) _d);
+                               @if (classColNeeded)
+                               {
+                                   <td @(subjRowNeeded ? "rowspan=2" : "")>@Html.Raw(entry?.Class?.Name ?? "&nbsp;")</td>
+                               }
+                               if (subjRowNeeded)
+                               {
+                                   <td>@Html.Raw(entry?.Subject?.RegistryName ?? "&nbsp;")</td>
+                               }
+                               else
+                               {
+                                   <td class="text-row">@Html.Raw(entry?.Text ?? "&nbsp;")</td>
+                               }
+                           }
+                       </tr>
+                       @if (subjRowNeeded)
+                       {
+                           <tr>
+                               @for (int d = (int) start; d <= (int) end; d++)
+                               {
+                                   var _d = d;
+                                   var entry = Model.RegEntries.SingleOrDefault(e => e.Date.Hour == _h && e.Date.DayOfWeek == (DayOfWeek) _d);
+                                   <td class="text-row">@Html.Raw(entry?.Text ?? "&nbsp;")</td>
+                               }
+                           </tr>
+                       }
+                   }
+                   <tr class="signature-row">
+                       <th rowspan="2" class="first-column">Signature</th>
+                       @for (int i = (int) start; i <= (int) end; i++)
+                       {
+                           <td @(classColNeeded ? "colspan=2" : "")>&nbsp;</td>
+                       }
+
+                   </tr>
+               </table>;
+    }
+}
+
+@RenderTable(DayOfWeek.Monday, DayOfWeek.Wednesday)(null)
+<p class="break-after">&nbsp;</p>
+@RenderTable(DayOfWeek.Thursday, DayOfWeek.Friday)(null)
+</body>
+</html>

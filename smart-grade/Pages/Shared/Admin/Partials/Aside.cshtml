@@ -1,0 +1,214 @@
+@using System.Reflection
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Database.Model
+@using FirestormSW.SmartGrade.Extensions
+@using FirestormSW.SmartGrade.Pages.Admin
+@using FirestormSW.SmartGrade.Pages.Admin.Management
+@using FirestormSW.SmartGrade.Pages.Teacher
+@using FirestormSW.SmartGrade.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Html
+@using Microsoft.AspNetCore.Http
+@using Disciplinary = FirestormSW.SmartGrade.Pages.Admin.Disciplinary
+@using Grades = FirestormSW.SmartGrade.Pages.Admin.Grades
+@using Registry = FirestormSW.SmartGrade.Pages.Admin.Registry
+
+@inject LoginService LoginService;
+@inject AppDatabase Database;
+
+@{
+    var currentUser = LoginService.GetCurrentLoggedInUser(Context);
+    var currentRole = currentUser.CurrentRole?.GroupType;
+    var currentPagePolicy = ((Type) Model.GetType()).GetCustomAttribute<AuthorizeAttribute>()?.Policy;
+    if (currentPagePolicy != null && !string.Equals(currentRole?.ToString(), currentPagePolicy, StringComparison.CurrentCultureIgnoreCase))
+    {
+        Context.Response.Redirect(LoginService.GetStartingPage(currentUser));
+    }
+
+    int subjectId = Context.Session.GetInt32("subject_id") ?? -1;
+
+    Func<dynamic, IHtmlContent> RenderMenuItem(Type pageType, string iconPath, string pageName)
+    {
+        return @<li class="menu-item @(pageType == Model?.GetType() ? "menu-item-active" : "")" aria-haspopup="true">
+                   <a href="@Url.Page(pageType)" class="menu-link">
+                       <span class="svg-icon menu-icon">
+                           @Html.Resource(iconPath)
+                       </span>
+                       <span class="menu-text">@pageName</span>
+                   </a>
+               </li>;
+    }
+
+    Func<dynamic, IHtmlContent> RenderDropdownMenuItem(Type pageType, string iconPath, string pageName)
+    {
+        return @<li class="menu-item menu-item-submenu @(pageType == Model?.GetType() ? "menu-item-active menu-item-open" : "")"
+                    aria-haspopup="true" data-menu-toggle="hover">
+                   <a href="javascript:;" class="menu-link menu-toggle">
+                       <span class="svg-icon menu-icon">
+                           @Html.Resource(iconPath)
+                       </span>
+                       <span class="menu-text">@pageName</span>
+                       <i class="menu-arrow"></i>
+                   </a>
+                   <div class="menu-submenu">
+                       <i class="menu-arrow"></i>
+                       <ul class="menu-subnav">
+                           <li class="menu-item menu-item-parent" aria-haspopup="true">
+                               <span class="menu-link">
+                                   <span class="menu-text">@pageName</span>
+                               </span>
+                           </li>
+                           @if (pageType != typeof(Notes))
+                           {
+                               <li class="menu-item all-subjects-menu @(-2 == subjectId && pageType == Model?.GetType() ? "menu-item-active" : "")" 
+                                   aria-haspopup="true" style="display: none">
+                                   <a href="@Url.Page(pageType)?subj=-2" class="menu-link">
+                                       <i class="menu-bullet menu-bullet-dot">
+                                           <span></span>
+                                       </i>
+                                       <span class="menu-text">All subjects</span>
+                                   </a>
+                               </li>
+                           }
+                           @foreach (var subject in currentUser.TaughtSubjects)
+                           {
+                               <li class="menu-item @(subject.Id == subjectId && pageType == Model?.GetType() ? "menu-item-active" : "")" aria-haspopup="true">
+                                   <a href="@Url.Page(pageType)?subj=@subject.Id" class="menu-link">
+                                       <i class="menu-bullet menu-bullet-dot">
+                                           <span></span>
+                                       </i>
+                                       <span class="menu-text">@subject.Name</span>
+                                   </a>
+                               </li>
+                           }
+                       </ul>
+                   </div>
+               </li>;
+    }
+
+    Func<dynamic, IHtmlContent> RenderCustomDropdownMenuItem(string iconPath, string pageName, params (Type, string)[] subItems)
+    {
+        return @<li class="menu-item menu-item-submenu @(subItems.Any(t => t.Item1 == Model.GetType()) ? "menu-item-active menu-item-open" : "")"
+                    aria-haspopup="true" data-menu-toggle="hover">
+                   <a href="javascript:;" class="menu-link menu-toggle">
+                       <span class="svg-icon menu-icon">
+                           @Html.Resource(iconPath)
+                       </span>
+                       <span class="menu-text">@pageName</span>
+                       <i class="menu-arrow"></i>
+                   </a>
+                   <div class="menu-submenu">
+                       <i class="menu-arrow"></i>
+                       <ul class="menu-subnav">
+                           <li class="menu-item menu-item-parent" aria-haspopup="true">
+                               <span class="menu-link">
+                                   <span class="menu-text">@pageName</span>
+                               </span>
+                           </li>
+                           @foreach (var (subItem, title) in subItems)
+                           {
+                               <li class="menu-item @(subItem == Model?.GetType() ? "menu-item-active" : "")" aria-haspopup="true">
+                                   <a href="@Url.Page(subItem)" class="menu-link">
+                                       <i class="menu-bullet menu-bullet-dot">
+                                           <span></span>
+                                       </i>
+                                       <span class="menu-text">@title</span>
+                                   </a>
+                               </li>
+                           }
+                       </ul>
+                   </div>
+               </li>;
+    }
+}
+
+<!--begin::Aside-->
+<div class="aside aside-left aside-fixed d-flex flex-column flex-row-auto" id="kt_aside">
+
+    <!--begin::Brand-->
+    <div class="brand flex-column-auto" id="kt_brand">
+
+        <!--begin::Logo-->
+        <a href="@Url.Page(LoginService.GetStartingPage(currentUser))" class="brand-logo">
+            <img alt="Logo" src="~/assets/admin/media/logos/logo-light.png"/>
+        </a>
+
+        <!--end::Logo-->
+
+        <!--begin::Toggle-->
+        <button class="brand-toggle btn btn-sm px-0" id="kt_aside_toggle">
+            <span class="svg-icon svg-icon svg-icon-xl">
+                @Html.Resource("~/assets/admin/media/svg/icons/Navigation/Angle-double-left.svg")
+            </span>
+        </button>
+
+        <!--end::Toolbar-->
+    </div>
+
+    <!--end::Brand-->
+
+    <!--begin::Aside Menu-->
+    <div class="aside-menu-wrapper flex-column-fluid" id="kt_aside_menu_wrapper">
+
+        <!--begin::Menu Container-->
+        <div id="kt_aside_menu" class="aside-menu my-4" data-menu-vertical="1" data-menu-scroll="1" data-menu-dropdown-timeout="500">
+
+            <!--begin::Menu Nav-->
+            <ul class="menu-nav">
+                @if (currentUser.CurrentRole.GroupType == GroupType.Admin)
+                {
+                    <li class="menu-section">
+                        <h4 class="menu-text">Users and Groups</h4>
+                        <i class="menu-icon ki ki-bold-more-hor icon-md"></i>
+                    </li>
+                    @RenderMenuItem(typeof(Administrators), "~/assets/admin/media/svg/icons/Clothes/Tie.svg", "Administrators")(null)
+                    @RenderMenuItem(typeof(Teachers), "~/assets/admin/media/svg/icons/Clothes/Briefcase.svg", "Teachers")(null)
+                    @RenderMenuItem(typeof(Students), "~/assets/admin/media/svg/icons/Communication/Group.svg", "Students")(null)
+                    @RenderMenuItem(typeof(Classes), "~/assets/admin/media/svg/icons/Communication/Address-book2.svg", "Classes")(null)
+
+                    <li class="menu-section">
+                        <h4 class="menu-text">Data</h4>
+                        <i class="menu-icon ki ki-bold-more-hor icon-md"></i>
+                    </li>
+                    @RenderMenuItem(typeof(Attendance), "~/assets/admin/media/svg/icons/Communication/Add-user.svg", "Attendance")(null)
+                    @RenderMenuItem(typeof(Grades), "~/assets/admin/media/svg/icons/Home/Book-open.svg", "Grades")(null)
+                    @RenderMenuItem(typeof(Disciplinary), "~/assets/admin/media/svg/icons/Code/Warning-2.svg", "Disciplinary")(null)
+                    @RenderMenuItem(typeof(Registry), "~/assets/admin/media/svg/icons/Design/Select.svg", "Registry")(null)
+
+                    <li class="menu-section">
+                        <h4 class="menu-text">Setup</h4>
+                        <i class="menu-icon ki ki-bold-more-hor icon-md"></i>
+                    </li>
+                    @RenderMenuItem(typeof(GradeLevels), "~/assets/admin/media/svg/icons/General/Duplicate.svg", "Grade Levels")(null)
+                    @RenderMenuItem(typeof(Subjects), "~/assets/admin/media/svg/icons/Communication/Archive.svg", "Subjects")(null)
+
+                    <li class="menu-section">
+                        <h4 class="menu-text">Management</h4>
+                        <i class="menu-icon ki ki-bold-more-hor icon-md"></i>
+                    </li>
+                    @RenderCustomDropdownMenuItem("~/assets/admin/media/svg/icons/General/Settings-2.svg", "Control Panel", new[]
+                    {
+                        (typeof(GeneralConfig), "General"),
+                        (typeof(RegistryConfig), "Registry Settings")
+                    })(null)
+                }
+                else if (currentUser.CurrentRole.GroupType == GroupType.Teacher)
+                {
+                    @RenderDropdownMenuItem(typeof(Teacher.Grades), "~/assets/admin/media/svg/icons/Home/Book-open.svg", "Grades")(null)
+                    @RenderDropdownMenuItem(typeof(Absences), "~/assets/admin/media/svg/icons/Communication/Add-user.svg", "Absences")(null)
+                    @RenderDropdownMenuItem(typeof(Teacher.Disciplinary), "~/assets/admin/media/svg/icons/Code/Warning-2.svg", "Disciplinary")(null)
+                    @RenderDropdownMenuItem(typeof(Notes), "~/assets/admin/media/svg/icons/Communication/Clipboard-list.svg", "Notes")(null)
+                    @RenderMenuItem(typeof(Teacher.Registry), "~/assets/admin/media/svg/icons/Design/Select.svg", "Registry")(null)
+                }
+            </ul>
+
+            <!--end::Menu Nav-->
+        </div>
+
+        <!--end::Menu Container-->
+    </div>
+
+    <!--end::Aside Menu-->
+</div>
+
+<!--end::Aside-->

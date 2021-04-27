@@ -1,0 +1,25 @@
+ul.columns {
+    column-count: 5;
+    list-style-type: none;
+}
+
+@media only screen and (max-width: 1300px) {
+    ul.columns {
+        column-count: 3;
+        list-style-type: none;
+    }
+}
+
+@media only screen and (max-width: 660px) {
+    ul.columns {
+        column-count: 2;
+        list-style-type: none;
+    }
+}
+
+@media only screen and (max-width: 460px) {
+    ul.columns {
+        column-count: 1;
+        list-style-type: none;
+    }
+}

@@ -1,0 +1,31 @@
+@using System.Resources
+@using FirestormSW.SmartGrade.Resources.Localization
+@using FirestormSW.SmartGrade.Services
+
+@inject LanguageService LanguageService;
+
+<!--begin::Nav-->
+<ul class="navi navi-hover py-4">
+
+    @{
+        var resourceManager = new ResourceManager(typeof(Localization));
+        foreach (var cultureInfo in LanguageService.GetAvailableCultures())
+        {
+            var resourceSet = resourceManager.GetResourceSet(cultureInfo, true, false);
+            var flagIcon = resourceSet.GetString("meta.flag_icon");
+            var nativeName = cultureInfo.NativeName.Split('(')[0].Trim();
+
+            <!--begin::Item-->
+            <li class="navi-item">
+                <a href="?lang=@cultureInfo.Name" class="navi-link">
+                    <span class="symbol symbol-20 mr-3">
+                        <img src="~/assets/admin/media/svg/flags/@flagIcon" alt="@flagIcon"/>
+                    </span>
+                    <span class="navi-text">@nativeName</span>
+                </a>
+            </li>
+        }
+    }
+</ul>
+
+<!--end::Nav-->

@@ -1,0 +1,173 @@
+@page
+@using FirestormSW.SmartGrade.Database
+@using FirestormSW.SmartGrade.Extensions
+@using FirestormSW.SmartGrade.Services
+@using FirestormSW.SmartGrade.Utils
+@using Microsoft.AspNetCore.Http
+@model FirestormSW.SmartGrade.Pages.Teacher.Notes
+
+@inject AppDatabase Database;
+@inject LoginService LoginService;
+
+@{
+    Layout = "Shared/Admin/AdminLayout";
+
+    int subjectId = HttpContext.Session.GetInt32("subject_id") ?? -1;
+    var currentSubject = Database.Subjects.GetById(subjectId);
+    var currentUser = LoginService.GetCurrentLoggedInUser(HttpContext);
+    var classes = TeacherUtils.GetOrderedClasses(Database, currentUser);
+}
+
+<script src="~/assets/admin/js/pages/crud/forms/widgets/bootstrap-datetimepicker.js"></script>
+
+<!--begin::Entry-->
+<div class="d-flex flex-column-fluid">
+    <!--begin::Container-->
+    <div class="container">
+        <!--begin::Card-->
+        <div class="card card-custom" id="main-card">
+            <div class="card-header py-3">
+                <div class="card-title">
+                    <span class="card-icon">
+                        <span class="svg-icon svg-icon-md svg-icon-primary">
+                            <img data-svg="true" alt="" src="~/assets/admin/media/svg/icons/Communication/Clipboard-list.svg"/>
+                        </span>
+                    </span>
+                    <h3 class="card-label">Notes</h3>
+                    <ul class="breadcrumb breadcrumb-transparent breadcrumb-dot font-weight-bold p-0 my-10 font-size-sm">
+                        <li class="breadcrumb-item text-muted">
+                            <a class="text-muted">@currentSubject?.Name</a>
+                        </li>
+
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <!--begin::Search Form-->
+                <div class="mt-2 mb-7">
+                    <div class="row align-items-center">
+                        <div class="col-lg-9 col-xl-8">
+                            <div class="row align-items-center">
+                                <div class="col-md-4 my-2 my-md-0">
+                                    <div class="input-icon">
+                                        <input type="text" class="form-control" placeholder="Search..." id="kt_datatable_search_query"/>
+                                        <span>
+                                            <i class="flaticon2-search-1 text-muted"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 my-2 my-md-0">
+                                    <div class="d-flex align-items-center">
+                                        <label class="mr-3 mb-0 d-none d-md-block">Class:</label>
+                                        <select class="form-control" id="kt_class">
+                                            @foreach (var group in classes)
+                                            {
+                                                <option value="@group.Id">@group.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--begin: Datatable-->
+                <div class="accordion accordion-toggle-arrow" id="studentList">
+
+                </div>
+                <!--end: Datatable-->
+            </div>
+            <div class="overlay-layer bg-dark-o-10">
+                <div class="spinner spinner-primary"></div>
+            </div>
+        </div>
+        <!--end::Card-->
+    </div>
+    <!--end::Container-->
+</div>
+<!--end::Entry-->
+
+<div id="data-content" style="display: none">
+    <div>
+        <div class="row">
+            <div style="width: 100%">
+                <!--begin::Mixed Widget 1-->
+                <div class="card card-custom card-stretch gutter-b">
+                    <form class="form" asp-controller="NotesApi" asp-action="CreateOrUpdateNote" id="kt_form_1">
+                        <!--begin::Body-->
+                        <div class="card-body pt-4" style="padding: 0.3rem">
+                            <textarea class="form-control" id="input-comment" name="text" rows="10"></textarea>
+                            <span style="display: none;">Saving...</span>
+                        </div>
+                        <!--end: Card Body-->
+                        <input type="hidden" name="studentId"/>
+                        <input type="hidden" name="subjectId" value="@subjectId"/>
+                    </form>
+                </div>
+                <!--end::Mixed Widget 1-->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script id="data-template" type="text/html">
+    <!--begin::Entry-->
+    <div class="card" data-name="{{:name}}">
+        <div class="card-header" id="headingTwo{{:id}}">
+            <div class="card-title collapsed" data-toggle="collapse" data-target="#collapseTwo{{:id}}">
+                <div class="card-label">{{:name}}</div>
+            </div>
+        </div>
+        <div id="collapseTwo{{:id}}" class="card-body-root collapse" data-parent="#studentList">
+            <div class="card-body">
+            </div>
+        </div>
+    </div>
+    <!--end::Entry-->
+</script>
+
+<script>
+let API_LIST_PATH = "/api/teacher/notes/user_notes";
+let classSelector = $('#kt_class');
+let studentList = $('#studentList');
+let mainCard = $('#main-card');
+let dataContent = $('#data-content');
+let itemTemplate = $.templates('#data-template');
+let itemEntryTemplate = $.templates('#item-entry-template');
+let itemName = "Note";
+let subjectId = @subjectId;
+let currentUserId = @currentUser.Id;
+let inputBox = $('#input-comment');
+let saveLabel = inputBox.next('span');
+let form = $('#kt_form_1');
+let saveIndex = 0;
+
+console.log(inputBox)
+
+inputBox.on('change keyup', function () {
+    saveLabel.show();
+    let nextIndex = ++saveIndex;
+    setTimeout(() => {
+        if (nextIndex === saveIndex) {
+            $.ajax({
+                url: form.attr('action'),
+                method: 'POST',
+                data: form.serialize(),
+                success: result => {
+                    console.log("Success", result)
+                    saveLabel.hide();
+                },
+                error: (e) => console.log("Error", e)
+            });
+        }
+    }, 1000);
+});
+
+function handleContentResult(result) {
+    console.log(">>>>", result)
+    inputBox.val(result.Text)
+}
+</script>
+
+<script src="~/assets/admin/js/pages/toast_notifications.js"></script>
+<script src="~/assets/admin/js/pages/teacher_common.js"></script>

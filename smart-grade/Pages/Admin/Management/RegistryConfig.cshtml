@@ -1,0 +1,406 @@
+@page
+@using FirestormSW.SmartGrade.Database
+@model FirestormSW.SmartGrade.Pages.Admin.Management.RegistryConfig
+
+@inject AppDatabase Database;
+
+@{
+    Layout = "Shared/Admin/AdminLayout";
+}
+
+<div class="d-flex flex-column-fluid">
+    <!--begin::Container-->
+    <div class="container">
+        <!--begin::Card-->
+        <div class="card card-custom">
+            <div class="card-header py-3">
+                <div class="card-title">
+                    <span class="card-icon">
+                        <span class="svg-icon svg-icon-md svg-icon-primary">
+                            <img data-svg="true" alt="" src="~/assets/admin/media/svg/icons/Shopping/Chart-bar1.svg"/>
+                        </span>
+                    </span>
+                    <h3 class="card-label">Registry Settings</h3>
+                </div>
+            </div>
+            <div class="card-body">
+                @{
+                    var gradeLevels = Database.GradeLevels.ToArray();
+                }
+                <ul class="nav nav-tabs nav-tabs-line">
+                    @foreach (var gradeLevel in gradeLevels)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(gradeLevel == gradeLevels.FirstOrDefault() ? "active" : "")"
+                               data-toggle="tab" href="#kt_tab_pane_@gradeLevel.Id">
+                                @gradeLevel.Name
+                            </a>
+                        </li>
+                    }
+                </ul>
+                <div class="tab-content mt-5" id="myTabContent">
+                    @foreach (var gradeLevel in gradeLevels)
+                    {
+                        <div class="tab-pane fade @(gradeLevel == gradeLevels.FirstOrDefault() ? "show active" : "")"
+                             id="kt_tab_pane_@gradeLevel.Id" role="tabpanel" aria-labelledby="kt_tab_pane_@gradeLevel.Id">
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Start Time</label>
+                                    <div>
+                                        <div class="input-group timepicker">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text">
+                                                    <i class="la la-clock-o"></i>
+                                                </span>
+                                            </div>
+                                            <input class="form-control timepicker-input start-time" readonly placeholder="Select time" type="text"
+                                                   name="start_time"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Group Name</label>
+                                    <div class="input-group">
+                                        <select class="form-control" name="group_name">
+                                            <option value="class" selected>Class</option>
+                                            <option value="group">Group</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Activity Name</label>
+                                    <div class="input-group">
+                                        <select class="form-control" name="activity_name">
+                                            <option value="subject" selected>Subject</option>
+                                            <option value="activity">Activity</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Enabled Pages</label>
+                                    <div class="checkbox-inline">
+                                        <label class="checkbox">
+                                            <input type="checkbox" name="page_grades"/>
+                                            <span></span>
+                                            Grades
+                                        </label>
+                                        <label class="checkbox">
+                                            <input type="checkbox" name="page_absences"/>
+                                            <span></span>
+                                            Absences
+                                        </label>
+                                        <label class="checkbox">
+                                            <input type="checkbox" name="page_disciplinary"/>
+                                            <span></span>
+                                            Disciplinary
+                                        </label>
+                                        <label class="checkbox">
+                                            <input type="checkbox" name="page_notes"/>
+                                            <span></span>
+                                            Notes
+                                        </label>
+                                        <label class="checkbox">
+                                            <input type="checkbox" name="page_registry"/>
+                                            <span></span>
+                                            Registry
+                                        </label>
+                                    </div>
+                                    <span class="form-text text-muted">These pages will be enabled for this grade level</span>
+                                </div>
+                                <button type="button" class="btn btn-primary font-weight-bold"
+                                        onclick="updateStartTime(@gradeLevel.Id)">
+                                    Apply
+                                </button>
+                            </div>
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th scope="col">Time</th>
+                                    <th scope="col">Duration (hours)</th>
+                                    <th scope="col">Has Class</th>
+                                    <th scope="col">Has Subject</th>
+                                    <th scope="col">Has PCO</th>
+                                    <th scope="col">Has Text</th>
+                                    <th scope="col">Action</th>
+                                </tr>
+                                </thead>
+                                <tbody id="tbody_group_@gradeLevel.Id">
+
+                                </tbody>
+                            </table>
+                            <div class="card-footer">
+                                <button type="button" class="btn btn-primary mr-2" data-toggle="modal"
+                                        data-target="#newRecordModal" onclick="resetForm(@gradeLevel.Id)">
+                                    Add Row
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <!--end::Card-->
+    </div>
+    <!--end::Container-->
+</div>
+
+<!-- Modal-->
+<div class="modal fade" id="newRecordModal" tabindex="-1" role="dialog" aria-labelledby="newRecordModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newRecordModalLabel">Create Time Slot</h5>
+                <h5 class="modal-title" id="editRecordModalLabel" style="display: none;">Edit Time Slot</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <i aria-hidden="true" class="ki ki-close"></i>
+                </button>
+            </div>
+            <form class="form" asp-controller="RegistryApi" asp-action="AddConfigurationRow" id="kt_form_1">
+                <div class="modal-body">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Duration</label>
+                            <input type="number" name="duration" min="1" max="20" value="1" class="form-control" placeholder="Time slot length"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Custom label</label>
+                            <input type="text" name="customLabel" class="form-control" placeholder="Custom label"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Properties</label>
+                            <div class="checkbox-inline">
+                                <label class="checkbox">
+                                    <input type="checkbox" name="hasClass"/>
+                                    <span></span>
+                                    Class
+                                </label>
+                                <label class="checkbox">
+                                    <input type="checkbox" name="hasSubject"/>
+                                    <span></span>
+                                    Subject
+                                </label>
+                                <label class="checkbox">
+                                    <input type="checkbox" name="hasPco"/>
+                                    <span></span>
+                                    PCO
+                                </label>
+                                <label class="checkbox">
+                                    <input type="checkbox" name="hasText"/>
+                                    <span></span>
+                                    Text
+                                </label>
+                            </div>
+                            <span class="form-text text-muted">These options will appear in the Registry rows</span>
+                        </div>
+                        <div class="form-group">
+                            <label>Presets</label>
+                            <textarea class="form-control" name="presets" id="preset-textarea" rows="6" style="resize: none;"></textarea>
+                            <span class="form-text text-muted">You can separate multiple presets with new lines</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light-primary font-weight-bold" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary font-weight-bold" id="btn_save_create_item">Save</button>
+                </div>
+                <input type="hidden" name="presetsJson">
+                <input type="hidden" name="gradeLevelId">
+                <input type="hidden" name="existingId">
+            </form>
+        </div>
+    </div>
+</div>
+<!--end::Modal-->
+
+<script id="row-template" type="text/html">
+    <tr>
+        <td>{{:time}}</td>
+        <td>{{:duration}}</td>
+        <td>
+            <span style="width: 340px;">
+                <span class="label label-{{:color_has_class}} label-pill label-inline mr-2">{{:has_class}}</span>
+            </span>
+        </td>
+        <td>
+            <span style="width: 340px;">
+                <span class="label label-{{:color_has_subject}} label-pill label-inline mr-2">{{:has_subject}}</span>
+            </span>
+        </td>
+        <td>
+            <span style="width: 340px;">
+                <span class="label label-{{:color_has_pco}} label-pill label-inline mr-2">{{:has_pco}}</span>
+            </span>
+        </td>
+        <td>
+            <span style="width: 340px;">
+                <span class="label label-{{:color_has_text}} label-pill label-inline mr-2">{{:has_text}}</span>
+            </span>
+        </td>
+        <td>
+            <span style="overflow: visible; position: relative; width: 125px;">
+                <a href="javascript:;" onclick="setupEditModal('{{:id}}', '{{:config_id}}', '{{:grade_level_id}}')"
+                   class="btn btn-sm btn-clean btn-icon mr-2" title="Edit details">
+                    <span class="svg-icon svg-icon-md">
+                        <img data-svg="true" alt="" src="~/assets/admin/media/svg/icons/Design/Edit.svg"/>
+                    </span>
+                </a>
+                <a href="javascript:;" onclick="deleteTimeSlot('{{:id}}')" class="btn btn-sm btn-clean btn-icon" title="Delete">
+                    <span class="svg-icon svg-icon-md">
+                        <img data-svg="true" alt="" src="~/assets/admin/media/svg/icons/General/Trash.svg"/>
+                    </span>
+                </a>
+            </span>
+        </td>
+    </tr>
+</script>
+
+<script src="~/assets/admin/js/pages/formless.js"></script>
+
+<script>
+let rowTemplate = $.templates('#row-template');
+let formAddRow = $('#kt_form_1');
+let currentData = undefined;
+
+function reloadAllLevels() {
+    $.ajax({
+        url: "@Url.Action("GetConfigurations", "RegistryApi")",
+        method: "GET",
+        success: result => {
+            currentData = result;
+            result.forEach(e => {
+                let rootDiv = $('#kt_tab_pane_' + e.GradeLevelId);
+                rootDiv.find('input.timepicker-input').timepicker({
+                    timeFormat: 'H:mm',
+                    minuteStep: 60,
+                    showSeconds: false,
+                    showMinutes: false,
+                    showMeridian: false,
+                    snapToStep: true,
+                    defaultTime: (e.Configuration?.StartTime?.Hours ?? 8) + ":00"
+                });
+                
+                if(e.Configuration.GroupName !== null)
+                    rootDiv.find('select[name="group_name"]').val(e.Configuration.GroupName);
+                if(e.Configuration.ActivityName !== null)
+                    rootDiv.find('select[name="activity_name"]').val(e.Configuration.ActivityName);
+                
+                rootDiv.find('input[name=page_grades]').prop('checked', e.Configuration.EnableGradesPage);
+                rootDiv.find('input[name=page_absences]').prop('checked', e.Configuration.EnableAbsencesPage);
+                rootDiv.find('input[name=page_disciplinary]').prop('checked', e.Configuration.EnableDisciplinaryPage);
+                rootDiv.find('input[name=page_notes]').prop('checked', e.Configuration.EnableNotesPage);
+                rootDiv.find('input[name=page_registry]').prop('checked', e.Configuration.EnableRegistryPage);                
+                
+                let table = $('#tbody_group_' + e.GradeLevelId);
+                table.empty();
+                if (e.Configuration !== null)
+                {
+                    let startHour = e.Configuration.StartTime.Hours;
+                    e.Configuration.Slots.forEach(slot => {
+                        let duration = slot.Duration;
+                        let rowHtml = rowTemplate.render({
+                            id: slot.Id,
+                            config_id: e.Configuration.Id,
+                            grade_level_id: e.GradeLevelId,
+                            time: startHour + ":00",
+                            duration: duration,
+                            has_subject: slot.HasSubject ? "yes" : "no",
+                            has_class: slot.HasClass ? "yes" : "no",
+                            has_text: slot.HasText ? "yes" : "no",
+                            has_pco: slot.HasPCO ? "yes" : "no",
+                            color_has_subject: slot.HasSubject ? "success" : "danger",
+                            color_has_class: slot.HasClass ? "success" : "danger",
+                            color_has_text: slot.HasText ? "success" : "danger",
+                            color_has_pco: slot.HasPCO ? "success" : "danger",
+                        });
+                        table.append(rowHtml)
+                        startHour += duration;
+                    });
+                }
+            });
+        }
+    });
+}
+
+function updateStartTime(levelId) {
+    let root = $('#kt_tab_pane_' + levelId);
+    $.post({
+        url: "@Url.Action("SetConfigurationData", "RegistryApi")",
+        method: "POST",
+        data: {
+            gradeLevelId: levelId,
+            startTime: root.find('input[name="start_time"]').val(),
+            groupName: root.find('select[name="group_name"]').val(),
+            activityName: root.find('select[name="activity_name"]').val(),
+            pageGrades: root.find('input[name="page_grades"]').is(':checked'),
+            pageAbsences: root.find('input[name="page_absences"]').is(':checked'),
+            pageDisciplinary: root.find('input[name="page_disciplinary"]').is(':checked'),
+            pageNotes: root.find('input[name="page_notes"]').is(':checked'),
+            pageRegistry: root.find('input[name="page_registry"]').is(':checked'),
+        },
+        success: result => {
+            reloadAllLevels();
+            showNotification({
+                message: "Saved!"
+            });
+        }
+    });
+}
+
+function resetForm(id) {
+    $('#tbody_presets').empty();
+    formAddRow.find('input[name="duration"]').val(1);
+    formAddRow.find('input[name="gradeLevelId"]').val(id);
+    formAddRow.find('input[name="existingId"]').val(-1);
+    formAddRow.find('input[name="customLabel"]').val('');
+    formAddRow.find('input[type="checkbox"]').prop("checked", false);
+    $('#preset-textarea').val('');
+}
+
+Formless(formAddRow, {
+    prepare: (form) => {
+        let presetTexts = $('#tbody_presets').find('td:first-child').map((a, b) => b.innerText).toArray();
+        form.find('input[name="presetsJson"]').val(JSON.stringify(presetTexts));
+    },
+    complete: result => {
+        $('#newRecordModal').modal('hide');
+        if (result.success !== true) {
+            Swal.fire("Unable to modify this entry!", "", "error");
+        } else {
+            reloadAllLevels();
+        }
+    }
+});
+
+function deleteTimeSlot(id) {
+    $.ajax({
+        url: "@Url.Action("DeleteConfigurationRow", "RegistryApi")",
+        method: "DELETE",
+        data: {
+            rowId: id
+        },
+        success: () => reloadAllLevels()
+    });
+}
+
+function setupEditModal(rowId, configId, levelId) {
+    let rowData = currentData.filter(d => d.GradeLevelId == configId)[0].Configuration.Slots.filter(r => r.Id == rowId)[0];
+    formAddRow.find('input[name="duration"]').val(rowData.Duration);
+    formAddRow.find('input[name="gradeLevelId"]').val(levelId);
+    formAddRow.find('input[name="existingId"]').val(rowData.Id);
+    formAddRow.find('input[name="customLabel"]').val(rowData.CustomLabel);
+    formAddRow.find('input[name="hasClass"]').prop("checked", rowData.HasClass);
+    formAddRow.find('input[name="hasSubject"]').prop("checked", rowData.HasSubject);
+    formAddRow.find('input[name="hasPco"]').prop("checked", rowData.HasPCO);
+    formAddRow.find('input[name="hasText"]').prop("checked", rowData.HasText);
+    if (rowData.Presets !== null)
+        $('#preset-textarea').val(rowData.Presets.join('\n'));
+    else
+        $('#preset-textarea').val('');
+    $('#newRecordModal').modal(true);
+   
+}
+
+$(document).ready(() => reloadAllLevels());
+</script>
+
+<script src="~/assets/admin/js/pages/toast_notifications.js"></script>
